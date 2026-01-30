@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -27,11 +27,13 @@ export default function EditMapForm({ map, onSubmitCallback }: EditMapFormProps)
     resolver: zodResolver(mapSchema),
     defaultValues: {
       name: map.name,
+      slug: map.slug,
       description: map.description,
       map_image_url: map.map_image_url,
       map_width: map.map_width,
       map_height: map.map_height,
-      viewport_config: map.viewport_config as any, // Cast because JSON type from DB might differ slightly
+      // Cast because JSON type from DB might differ slightly but conforms to the shape we need
+      viewport_config: map.viewport_config as unknown as { zoom: number; center: [number, number]; minzoom?: number; maxzoom?: number },
     },
   });
 
@@ -51,9 +53,9 @@ export default function EditMapForm({ map, onSubmitCallback }: EditMapFormProps)
   }
 
   return (
-    <Form {...form as any}>
+    <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <MapFormFields form={form as unknown as any} />
+        <MapFormFields form={form} />
         
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={isLoading}>

@@ -10,16 +10,17 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 
 interface ProvidersProps {
-  children: ReactNode
+  children: ReactNode;
+  defaultOpen?: boolean;
 }
 
-export default function Providers({ children }: ProvidersProps) {
+export default function Providers({ children, defaultOpen }: ProvidersProps) {
   const queryClient = getQueryClient();
 
   return (
     <StackProvider app={stackClientApp}><StackTheme>
       <QueryClientProvider client={queryClient}>
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
           <Toaster />
           <main className="w-full">

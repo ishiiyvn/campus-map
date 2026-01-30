@@ -19,7 +19,8 @@ export async function ensureProfile() {
     .filter(Boolean);
 
   // Try common email shapes without depending on specific SDK types
-  const userEmail = (user as any)?.email ?? (user as any)?.primaryEmail?.email ?? null;
+  const u = user as unknown as { email?: string; primaryEmail?: { email?: string } };
+  const userEmail = u.email ?? u.primaryEmail?.email ?? null;
   const isAdmin = userEmail ? adminEmails.includes(userEmail) : false;
 
   await db

@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { MapInput } from "@/lib/validators/map";
 
+import { FileUpload } from "@/components/ui/file-upload";
+
 interface MapFormFieldsProps {
   form: UseFormReturn<MapInput>;
 }
@@ -25,6 +27,20 @@ export function MapFormFields({ form }: MapFormFieldsProps) {
             <FormLabel>Nombre del Mapa</FormLabel>
             <FormControl>
               <Input placeholder="Ej: Campus FPUNA"  {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="slug"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>URL (Slug)</FormLabel>
+            <FormControl>
+              <Input placeholder="ej-campus-fpuna" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -50,9 +66,13 @@ export function MapFormFields({ form }: MapFormFieldsProps) {
         name="map_image_url"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>URL de la Imagen</FormLabel>
+            <FormLabel>Imagen del Mapa</FormLabel>
             <FormControl>
-              <Input placeholder="https://..." {...field} />
+              <FileUpload
+                endpoint="imageUploader"
+                value={field.value}
+                onChange={field.onChange}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

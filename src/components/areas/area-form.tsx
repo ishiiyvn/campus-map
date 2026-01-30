@@ -27,6 +27,11 @@ export interface AreaFormProps {
   mapId?: number;
 }
 
+type PolygonCoordinate = { x: number; y: number } | Record<string, unknown>;
+
+// Helper type for Area with potential extra properties
+type AreaWithPotentialType = Area & { type?: string };
+
 export default function AreaForm({ area, onSubmitCallback, mapId = 1 }: AreaFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -37,9 +42,9 @@ export default function AreaForm({ area, onSubmitCallback, mapId = 1 }: AreaForm
       name: area?.name || "",
       code: area?.code || "",
       description: area?.description || "",
-      type: (area as any)?.type || "generico", // Type cast for now as schema might be missing type column or it is dynamic properties
+      type: (area as unknown as AreaWithPotentialType)?.type || "generico",
       map_id: area?.map_id || mapId,
-      polygon_coordinates: area?.polygon_coordinates || [],
+      polygon_coordinates: (area?.polygon_coordinates as PolygonCoordinate[]) || [],
     },
   });
 
@@ -49,9 +54,9 @@ export default function AreaForm({ area, onSubmitCallback, mapId = 1 }: AreaForm
         name: area.name,
         code: area.code,
         description: area.description || "",
-        type: (area as any)?.type || "generico",
+        type: (area as unknown as AreaWithPotentialType)?.type || "generico",
         map_id: area.map_id,
-        polygon_coordinates: area.polygon_coordinates,
+        polygon_coordinates: (area.polygon_coordinates as PolygonCoordinate[]),
       });
     }
   }, [area, form]);
@@ -69,7 +74,7 @@ export default function AreaForm({ area, onSubmitCallback, mapId = 1 }: AreaForm
       }
 
       form.reset();
-      onSubmitCallback && onSubmitCallback();
+      onSubmitCallback?.();
       router.refresh();
     } catch (error) {
       console.error(error);

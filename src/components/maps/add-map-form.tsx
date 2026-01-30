@@ -26,6 +26,7 @@ export default function AddMapForm({ onSubmitCallback }: AddMapFormProps) {
     resolver: zodResolver(mapSchema),
     defaultValues: {
       name: "",
+      slug: "",
       description: "",
       map_image_url: "",
       map_width: 0,

@@ -1,45 +1,33 @@
-import Link from 'next/link';
 import { getMaps } from '@/server/actions/maps';
 import AddMapButton from '@/components/maps/add-map-button';
-import EditMapButton from '@/components/maps/edit-map-button';
-import MapViewerWrapper from '@/components/maps/map-viewer-wrapper';
-import { AppSidebar } from '@/components/app-sidebar';
+import { MapCard } from '@/components/maps/map-card';
 
-interface HomeProps {
-  searchParams: Promise<{ mapId?: string }>;
-}
-
-export default async function Home({ searchParams }: HomeProps) {
-  const params = await searchParams;
-  const mapId = params.mapId ? parseInt(params.mapId) : undefined;
-
+export default async function Dashboard() {
   const maps = await getMaps() || [];
 
-  // Find the selected map
-  const selectedMap = mapId
-    ? maps.find(m => m.id === mapId)
-    : (maps.length > 0 ? maps[0] : undefined);
-
   return (
-    <div className="flex-1 relative flex flex-col h-full items-center justify-center w-full">
-      {selectedMap ? (
-        <div className="flex-1 relative h-full w-full">
-          {/* 
-            MapViewer expects MapOutput which has strictly typed viewport_config.
-            The DB returns jsonb for viewport_config. 
-            We can cast it here since we trust the data structure or it defaults safely in the viewer.
-          */}
-          <MapViewerWrapper
-            mapData={{
-              ...selectedMap,
-              // Cast jsonb to the expected shape (or let it fail if invalid, though Zod validation on input helps)
-              viewport_config: selectedMap.viewport_config as any
-            }}
-          />
+    <div className="container mx-auto py-10 px-4">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Mis Mapas</h1>
+          <p className="text-muted-foreground mt-2">
+            Gestiona tus mapas y comparte los enlaces públicos.
+          </p>
+        </div>
+        <AddMapButton />
+      </div>
+
+      {maps.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg bg-muted/50">
+          <h3 className="text-xl font-semibold mb-2">No tienes mapas creados</h3>
+          <p className="text-muted-foreground mb-6">Comienza creando tu primer mapa interactivo.</p>
+          <AddMapButton />
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          Selecciona un mapa para ver los detalles
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {maps.map((map) => (
+            <MapCard key={map.id} map={map} />
+          ))}
         </div>
       )}
     </div>

@@ -27,6 +27,23 @@ export async function getPointOfInterestById(id: number) {
   }
 }
 
+// Fetch POIs by category
+export async function getPointsOfInterestByCategoryId(categoryId: number) {
+  try {
+    return await db.select().from(pointsOfInterest).where(eq(pointsOfInterest.category_id, categoryId));
+  } catch (error) {
+    console.error("Error fetching points of interest by category:", error);
+  }
+}
+
+// Fetch POIs by map ID
+export async function getPointsOfInterestByMapId(mapId: number) {
+  try {
+    return await db.select().from(pointsOfInterest).where(eq(pointsOfInterest.map_id, mapId));
+  } catch (error) {
+    console.error("Error fetching points of interest by map ID:", error);
+  }
+}
 // ---------------------------
 // CREATE / UPDATE / DELETE
 // ---------------------------

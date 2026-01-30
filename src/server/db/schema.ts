@@ -34,7 +34,7 @@ export const pointsOfInterest = pgTable("points_of_interest", {
   name: varchar({ length: 255 }).notNull(),
   description: varchar({ length: 1024 }).notNull(),
 
-  category_id: integer().references(() => categories.id, { onDelete: "set null" }), // Optional categorization
+  category_id: integer().notNull().references(() => categories.id, { onDelete: "restrict" }), // Mandatory categorization
 
   // Exact coordinates on the map
   x_coordinate: doublePrecision().notNull(),

@@ -4,7 +4,7 @@ import { db } from "@/index";
 import { maps } from "../db/schema";
 import { and, eq } from "drizzle-orm";
 import { mapSchema } from "@/lib/validators/map";
-import { stackServerApp } from "@/stack/server";
+import { stackServerApp, ensureProfile } from "@/stack/server";
 import slugify from "slugify";
 
 // ---------------------------
@@ -56,6 +56,9 @@ export async function createMap(data: unknown) {
   try {
     const user = await stackServerApp.getUser();
     if (!user) throw new Error("Unauthorized");
+
+    // Ensure user profile exists in our DB before linking map
+    await ensureProfile();
 
     // Validate incoming data
     const validatedData = mapSchema.parse(data);
