@@ -1,17 +1,18 @@
-"use client"
-import React, { useState } from 'react'
+"use client";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Pencil } from 'lucide-react';
-import AreaForm from './area-form';
+import EditAreaForm from './edit-area-form';
 import { Area } from '@/server/db/schema';
 
 interface EditAreaButtonProps {
-    area: Area
+    area: Area;
 }
 
 export default function EditAreaButton({ area }: EditAreaButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
+    
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
@@ -22,9 +23,9 @@ export default function EditAreaButton({ area }: EditAreaButtonProps) {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle className='h-8'>Editar área</DialogTitle>
-                    <AreaForm area={area} onSubmitCallback={() => { setIsOpen(false) }} />
+                    <EditAreaForm area={area} onSuccess={() => setIsOpen(false)} />
                 </DialogHeader>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

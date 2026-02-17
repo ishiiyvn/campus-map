@@ -9,7 +9,7 @@ export default async function AdminAreasPage() {
     <HydrationBoundary state={dehydrate(queryClient)}>
       {/* <AreasList /> */}
       <main className="flex flex-col gap-4 max-w-7xl mx-auto p-4 md:p-24">
-        <AddAreaButton />
+        <AddAreaButton mapId={1} />
       </main>
     </HydrationBoundary>
   )

@@ -3,10 +3,10 @@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MapPinPlus, MousePointer2 } from "lucide-react";
+import { MapPinPlus, MousePointer2, VectorSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type EditorTool = "select" | "add_poi";
+export type EditorTool = "select" | "add_poi" | "add_area";
 
 interface MapEditorToolbarProps {
   isEditMode: boolean;
@@ -59,6 +59,14 @@ export function MapEditorToolbar({
             title="Add Marker"
           >
             <MapPinPlus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={activeTool === "add_area" ? "default" : "ghost"}
+            size="icon"
+            onClick={() => onToolChange("add_area")}
+            title="Add Area"
+          >
+            <VectorSquare className="h-4 w-4" />
           </Button>
         </div>
       )}

@@ -3,30 +3,26 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Pencil } from "lucide-react";
-import EditMapForm from "./edit-map-form";
-import { Map } from "@/server/db/schema";
+import { MapPlus } from "lucide-react";
+import AddMapForm from "../forms/add-map-form";
 
-interface EditMapButtonProps {
-  map: Map;
-}
-
-export default function EditMapButton({ map }: EditMapButtonProps) {
+export default function AddMapButton() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="flex justify-end">
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="icon">
-            <Pencil className="w-4 h-4" />
+          <Button>
+            Nuevo Mapa
+            <MapPlus className="w-4 h-4 ml-2" />
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Editar Mapa</DialogTitle>
+            <DialogTitle>Crear Nuevo Mapa</DialogTitle>
           </DialogHeader>
-          <EditMapForm map={map} onSubmitCallback={() => setIsOpen(false)} />
+          <AddMapForm onSubmitCallback={() => setIsOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>
