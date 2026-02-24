@@ -29,7 +29,14 @@ export const areaSchema = z.object({
   name: z.string().min(1, "El nombre del área es obligatorio"),
   code: z.string().min(1, "El código es obligatorio"),
   description: z.string().optional(),
-  polygon_coordinates: z.any(),
+  polygon_coordinates: z
+    .array(
+      z.object({
+        x: z.number(),
+        y: z.number(),
+      }),
+    )
+    .min(3, "El área debe tener al menos 3 puntos"),
   fill_color: z.string().nullable().optional(),
   stroke_color: z.string().nullable().optional(),
   properties: areaPropertiesSchema.optional(),

@@ -6,8 +6,6 @@ import { StackProvider, StackTheme } from '@stackframe/stack';
 import { stackClientApp } from '../stack/client';
 import { getQueryClient } from './get-query-client';
 import { Toaster } from 'sonner';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -20,14 +18,8 @@ export default function Providers({ children, defaultOpen }: ProvidersProps) {
   return (
     <StackProvider app={stackClientApp}><StackTheme>
       <QueryClientProvider client={queryClient}>
-        <SidebarProvider defaultOpen={defaultOpen}>
-          <AppSidebar />
-          <Toaster />
-          <main className="w-full">
-            <SidebarTrigger />
-            {children}
-          </main>
-        </SidebarProvider>
+        <Toaster />
+        {children}
       </QueryClientProvider>
     </StackTheme></StackProvider>
   )

@@ -7,9 +7,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react";
 
@@ -41,20 +41,20 @@ export default function AddCategoryForm({ onSubmitCallback }: AddCategoryFormPro
   });
 
   async function onSubmit(values: CategoryInput) {
-      try {
-        setIsLoading(true);
-        await createCategory(values);
-        toast.success("Category created successfully");
-        
-        form.reset();
-        onSubmitCallback?.();
-        router.refresh();
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to create category");
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      setIsLoading(true);
+      await createCategory(values);
+      toast.success("Category created successfully");
+
+      form.reset();
+      onSubmitCallback?.();
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create category");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -73,7 +73,7 @@ export default function AddCategoryForm({ onSubmitCallback }: AddCategoryFormPro
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="description"
@@ -96,16 +96,16 @@ export default function AddCategoryForm({ onSubmitCallback }: AddCategoryFormPro
               <FormLabel>Color</FormLabel>
               <FormControl>
                 <div className="flex items-center gap-2">
-                  <Input 
-                    type="color" 
-                    className="w-12 p-1 h-10" 
-                    {...field} 
-                    value={field.value || "#000000"} 
+                  <Input
+                    type="color"
+                    className="w-12 p-1 h-10"
+                    {...field}
+                    value={field.value || "#000000"}
                   />
-                  <Input 
-                    placeholder="#RRGGBB" 
-                    {...field} 
-                    value={field.value || ""} 
+                  <Input
+                    placeholder="#RRGGBB"
+                    {...field}
+                    value={field.value || ""}
                     className="font-mono"
                   />
                 </div>

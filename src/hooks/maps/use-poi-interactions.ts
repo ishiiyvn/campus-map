@@ -5,6 +5,7 @@ import { EditorTool } from "@/components/maps/editor-tools/map-editor-toolbar";
 
 interface UsePoiInteractionsOptions {
   onViewPoi?: (poi: PointOfInterest) => void;
+  onAreaPointAdd?: (point: { x: number; y: number }) => void;
 }
 
 export function usePoiInteractions(
@@ -37,6 +38,7 @@ export function usePoiInteractions(
       if (!isEditMode) return;
       const stage = e.target.getStage();
       if (!stage) return;
+      if (e.target !== stage) return;
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
       const mapPoint = transformPointerToMap(pointer);
@@ -46,11 +48,10 @@ export function usePoiInteractions(
         resetToolToSelect();
       }
       if (activeTool === "add_area") {
-        console.log("Area clicked at:", mapPoint);
-        resetToolToSelect();
+        options?.onAreaPointAdd?.({ x: mapPoint.x, y: mapPoint.y });
       }
     },
-    [activeTool, isEditMode, resetToolToSelect, transformPointerToMap],
+    [activeTool, isEditMode, options, resetToolToSelect, transformPointerToMap],
   );
 
   const handlePoiClick = useCallback(
@@ -67,7 +68,7 @@ export function usePoiInteractions(
 
   const handlePoiMouseEnter = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-      if (activeTool === "add_poi") return;
+      if (activeTool === "add_poi" || activeTool === "add_area") return;
       e.target.getStage()?.container()?.style && (e.target.getStage()!.container()!.style.cursor = "pointer");
     },
     [activeTool],
@@ -77,7 +78,7 @@ export function usePoiInteractions(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       const container = e.target.getStage()?.container();
       if (container) {
-        container.style.cursor = activeTool === "add_poi" ? "crosshair" : "move";
+        container.style.cursor = activeTool === "add_poi" || activeTool === "add_area" ? "crosshair" : "move";
       }
     },
     [activeTool],

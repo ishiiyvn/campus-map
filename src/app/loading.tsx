@@ -1,4 +1,4 @@
-import { MapGridSkeleton } from '@/components/maps/map-card-skeleton';
+import { MapGridSkeleton } from '@/components/maps/cards/map-card-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Loading() {

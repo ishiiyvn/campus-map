@@ -52,6 +52,10 @@ export async function createArea(data: unknown) {
   try {
     // Validate incoming data
     const validatedData = areaSchema.parse(data);
+    const existing = await db.select().from(areas).where(eq(areas.code, validatedData.code)).limit(1);
+    if (existing.length > 0) {
+      throw new Error("El código ya existe. Usa otro.");
+    }
     const [newArea] = await db
       .insert(areas)
       .values(validatedData)
@@ -62,6 +66,13 @@ export async function createArea(data: unknown) {
     console.error("Error creating area:", error);
     throw error;
   }
+}
+
+export async function isAreaCodeAvailable(code: string) {
+  const trimmed = code.trim();
+  if (!trimmed) return { available: false };
+  const existing = await db.select().from(areas).where(eq(areas.code, trimmed)).limit(1);
+  return { available: existing.length === 0 };
 }
 
 

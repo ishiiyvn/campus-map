@@ -1,3 +1,5 @@
+"use client"
+
 import {
   Sidebar,
   SidebarContent,
@@ -9,8 +11,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Home, LayoutGrid, Map, Layers } from "lucide-react"
+import { Home, LayoutGrid, Map, Layers, LogIn } from "lucide-react"
 import Link from "next/link"
+import { UserButton, useUser } from "@stackframe/stack"
 
 const items = [
   {
@@ -36,6 +39,8 @@ const items = [
 ]
 
 export function AppSidebar() {
+  const user = useUser();
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -62,7 +67,27 @@ export function AppSidebar() {
             </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        {user ? (
+          <div className="flex items-center gap-2 px-2 py-1">
+            <UserButton />
+            <span className="truncate text-xs text-muted-foreground">
+              {user.primaryEmail ?? user.displayName ?? "Signed in"}
+            </span>
+          </div>
+        ) : (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/login">
+                  <LogIn />
+                  <span>Login</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
+      </SidebarFooter>
     </Sidebar>
   )
 }

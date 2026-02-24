@@ -12,15 +12,23 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import AreaFormFields from "./area-form-fields";
+import { isAreaCodeAvailable } from "@/server/actions/areas";
 
 interface EditAreaFormProps {
   area: Area;
-  onSuccess?: () => void;
+  polygonCoordinates?: { x: number; y: number }[];
+  onSuccess?: (updated: Area) => void;
+  refreshOnSuccess?: boolean;
 }
 
 type PolygonCoordinate = { x: number; y: number } | Record<string, unknown>;
 
-export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
+export default function EditAreaForm({
+  area,
+  polygonCoordinates,
+  onSuccess,
+  refreshOnSuccess = true,
+}: EditAreaFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,7 +39,7 @@ export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
-      polygon_coordinates: (area.polygon_coordinates as PolygonCoordinate[]) || [],
+      polygon_coordinates: polygonCoordinates ?? ((area.polygon_coordinates as PolygonCoordinate[]) || []),
     },
   });
 
@@ -41,17 +49,33 @@ export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
-      polygon_coordinates: (area.polygon_coordinates as PolygonCoordinate[]),
+      polygon_coordinates: polygonCoordinates ?? (area.polygon_coordinates as PolygonCoordinate[]),
     });
-  }, [area, form]);
+  }, [area, form, polygonCoordinates]);
 
   async function onSubmit(values: AreaInput) {
     try {
       setIsLoading(true);
-      await updateArea(area.id!, values);
+      if (values.code !== area.code) {
+        const result = await isAreaCodeAvailable(values.code);
+        if (!result.available) {
+          form.setError("code", {
+            type: "validate",
+            message: "El código ya existe. Usa otro.",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+      const updatedArea = await updateArea(area.id!, {
+        ...values,
+        polygon_coordinates: polygonCoordinates ?? values.polygon_coordinates,
+      });
       toast.success("Area updated successfully");
-      onSuccess?.();
-      router.refresh();
+      onSuccess?.(updatedArea as Area);
+      if (refreshOnSuccess) {
+        router.refresh();
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to update area");
@@ -66,7 +90,9 @@ export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
         setIsLoading(true);
         await deleteArea(area.id!);
         toast.success("Area deleted successfully");
-        onSuccess?.();
+        if (onSuccess) {
+          onSuccess(area);
+        }
         router.refresh();
       } catch (error) {
         console.error(error);
@@ -80,7 +106,7 @@ export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <AreaFormFields form={form} />
+        <AreaFormFields form={form} initialCode={area.code} />
         
         <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={isLoading}>
@@ -99,11 +125,6 @@ export default function EditAreaForm({ area, onSuccess }: EditAreaFormProps) {
 
         {/* Hidden fields for required data */}
         <input type="hidden" {...form.register("map_id", { valueAsNumber: true })} />
-        {/*
-           TODO: Polygon coordinates are currently defaulted to empty array.
-           In the future, this should be handled by a map drawing tool.
-        */}
-        <input type="hidden" {...form.register("polygon_coordinates")} value={JSON.stringify(form.watch("polygon_coordinates"))} />
       </form>
     </Form>
   );

@@ -1,6 +1,6 @@
 import { getMaps } from '@/server/actions/maps';
-import AddMapButton from '@/components/maps/add-map-button';
-import { MapCard } from '@/components/maps/map-card';
+import AddMapButton from '@/components/maps/buttons/add-map-button';
+import { MapCard } from '@/components/maps/cards/map-card';
 
 export default async function Dashboard() {
   const maps = await getMaps() || [];
