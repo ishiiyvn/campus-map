@@ -3,39 +3,36 @@
 // db
 import { Area, Category, PointOfInterest } from "@/server/db/schema";
 
-// utils
-import { cn } from "@/lib/utils";
-
 // zod validators
 import { MapOutput } from "@/lib/validators/map";
 
 // components
-import { AddPoiDialog } from "@/components/maps/dialogs/add-poi-dialog";
-import { EditPoiDialog } from "@/components/maps/dialogs/edit-poi-dialog";
+import { PoiDialogs } from "@/components/pois/overlays/poi-dialogs";
 import { MapEditorToolbar } from "../editor-tools/map-editor-toolbar";
-import { AreaLayer } from "@/components/areas/map/area-layer";
-import { DraftAreaLayer } from "@/components/areas/map/draft-area-layer";
-import { EditAreaLayer } from "@/components/areas/map/edit-area-layer";
-import { AreaContextMenu } from "@/components/areas/map/area-context-menu";
-import { AreaControls } from "@/components/areas/map/area-controls";
-import { AreaDialogs } from "@/components/areas/map/area-dialogs";
+import { AreasLayersGroup } from "@/components/areas/layers/areas-layers-group";
+import { AreaUi } from "@/components/areas/overlays/area-ui";
 
 // konva components
-import { Stage, Layer, Image as KonvaImage, Group, Circle } from "react-konva";
+import { Stage, Layer } from "react-konva";
 import Konva from "konva";
 
 // hooks
-import { useCallback, useRef, useEffect, useMemo, useState } from "react";
+import { useCallback, useRef, useMemo, useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMapZoom } from "@/hooks/maps/use-map-zoom";
-import { usePoiInteractions } from "@/hooks/maps/use-poi-interactions";
-import { useStageSize } from "@/hooks/maps/use-stage-size";
-import useImage from "use-image";
-import { toast } from "sonner";
-import { useAreaDraft } from "@/hooks/areas/use-area-draft";
-import { useAreaEdit } from "@/hooks/areas/use-area-edit";
-import { useAreaActions } from "@/hooks/areas/use-area-actions";
-import { useMapStage } from "@/hooks/maps/use-map-stage";
+import { useStageZoom } from "@/components/maps/hooks/use-stage-zoom";
+import { usePoiInteractions } from "@/components/maps/hooks/use-poi-interactions";
+import { useStageSize } from "@/components/maps/hooks/use-stage-size";
+import { useAreaDraft } from "@/components/areas/hooks/use-area-draft";
+import { useAreaEdit } from "@/components/areas/hooks/use-area-edit";
+import { useAreaActions } from "@/components/areas/hooks/use-area-actions";
+import { useMapAreasState } from "@/components/areas/hooks/use-map-areas-state";
+import { useMapStage } from "@/components/maps/hooks/use-map-stage";
+import { useMapInteractions } from "@/components/maps/hooks/use-map-interactions";
+import { useStageInteractions } from "@/components/maps/hooks/use-stage-interactions";
+import { buildAreaRenderData } from "@/components/areas/utils/area-mappers";
+import { PoiLayer } from "@/components/pois/layers/poi-layer";
+import { MapImageLayer } from "@/components/maps/layers/map-image-layer";
+import { MapOverlayHints } from "@/components/maps/overlays/map-overlay-hints";
 
 
 interface MapViewerProps {
@@ -46,12 +43,6 @@ interface MapViewerProps {
   readOnly?: boolean;
 }
 
-
-// Background image component
-const URLImage = ({ src, width, height }: { src: string; width: number; height: number }) => {
-  const [image] = useImage(src);
-  return <KonvaImage image={image} width={width} height={height} listening={false} />;
-};
 
 export default function MapViewer({ mapData, pois, categories, areas, readOnly = true }: MapViewerProps) {
   // readOnly is currently unused but kept for interface compatibility
@@ -69,11 +60,11 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     draftAreaPointsFlat,
     draftUndoStack,
     addDraftPoint,
-    insertDraftPointAtNearestEdge,
     updateDraftPoint,
     removeDraftPointAt,
     moveDraftBy,
     resetDraft,
+    openDraftDialogIfValid,
     undoDraft,
   } = useAreaDraft();
   const {
@@ -94,8 +85,8 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     removeEditingPointAt,
     insertEditingPointAtNearestEdge,
     moveEditingBy,
-    resetEditing,
-    undoEdit,
+    cancelEditing,
+    undoEditing,
     setEditingOriginalPoints,
   } = useAreaEdit();
   const {
@@ -104,16 +95,12 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     setIsDeleteDialogOpen,
     setDeleteTargetAreaId,
     handleDeleteArea,
-    handleEditFormSuccess,
-    handleEditSave,
-    handleAreaCreated,
+    applyEditResult,
+    openEditDialogIfValid,
+    applyDraftCreate,
   } = useAreaActions();
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
-  const [mapAreas, setMapAreas] = useState<Area[]>(areas);
-
-  useEffect(() => {
-    setMapAreas(areas);
-  }, [areas]);
+  const { mapAreas, addArea, updateArea, removeArea } = useMapAreasState(areas);
 
   // State for interaction
   const isMobile = useIsMobile();
@@ -134,41 +121,19 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     }
   }, [isMobile, poiInteractions]);
 
-  // Zoom Logic
-  const { handleWheel } = useMapZoom(stageRef, mapData.viewport_config);
-  const handleWheelZoom = (e: Konva.KonvaEventObject<WheelEvent>) => {
-    handleWheel(e);
-    updateScaleFromStage();
+  const { onWheel } = useStageZoom({
+    stageRef,
+    viewportConfig: mapData.viewport_config,
+    onScaleUpdate: updateScaleFromStage,
+  });
+
+  const areaLines = useMemo(() => buildAreaRenderData(mapAreas), [mapAreas]);
+
+  const handleDraftFinish = () => {
+    openDraftDialogIfValid(() => setIsAreaDialogOpen(true));
   };
 
-  const areaLines = useMemo(
-    () =>
-      mapAreas.map((area) => {
-        const points = (area.polygon_coordinates ?? []) as { x: number; y: number }[];
-        return {
-          id: area.id,
-          points: points.flatMap((point) => [point.x, point.y]),
-          fill: area.fill_color || "rgba(59,130,246,0.2)",
-          stroke: area.stroke_color || "#3b82f6",
-        };
-      }),
-    [mapAreas],
-  );
-
-  const handleFinishArea = () => {
-    if (draftAreaPoints.length < 3) {
-      toast.error("Agrega al menos 3 puntos para crear un área");
-      return;
-    }
-    setIsAreaDialogOpen(true);
-  };
-
-  const handleDraftGroupDragStart = () => {
-    isDraggingRef.current = true;
-    updateCursor("grabbing");
-  };
-
-  const handleDraftGroupDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
+  const handleDraftDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
     const node = event.target;
     const dx = node.x();
     const dy = node.y();
@@ -177,15 +142,10 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
       node.position({ x: 0, y: 0 });
     }
     isDraggingRef.current = false;
-    updateCursor("crosshair");
+    setCursor("crosshair");
   };
 
-  const handleEditGroupDragStart = () => {
-    isDraggingRef.current = true;
-    updateCursor("grabbing");
-  };
-
-  const handleEditGroupDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
+  const handleEditDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
     const node = event.target;
     const dx = node.x();
     const dy = node.y();
@@ -194,31 +154,41 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
       node.position({ x: 0, y: 0 });
     }
     isDraggingRef.current = false;
-    updateCursor("crosshair");
+    setCursor("crosshair");
   };
 
-  const handleEditUndoPoint = () => {
-    undoEdit();
+  const handleEditUndo = () => {
+    undoEditing();
   };
 
-  const handleUndoPoint = () => {
+  const handleDraftUndo = () => {
     undoDraft();
   };
 
-  const handleCancelArea = () => {
+  const handleDraftCancel = () => {
     resetDraft();
   };
 
   const handleEditCancel = () => {
-    resetEditing();
+    cancelEditing();
   };
 
-  const updateCursor = (cursor: string) => {
-    const container = stageRef.current?.container();
-    if (container) {
-      container.style.cursor = cursor;
-    }
-  };
+  const { setCursor, stageProps } = useStageInteractions({
+    stageRef,
+    isDraggingRef,
+    contextMenu,
+    closeContextMenu,
+    editingAreaId,
+    editingPoints,
+    insertEditingPointAtNearestEdge,
+    getPointerMapPosition,
+    poiInteractions,
+  });
+
+  const { onDraftDragStart, onEditDragStart } = useMapInteractions({
+    isDraggingRef,
+    updateCursor: setCursor,
+  });
 
   return (
     <div
@@ -231,79 +201,31 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
       <Stage
         width={stageSize.width}
         height={stageSize.height}
-        onWheel={handleWheelZoom}
-        onClick={(e) => {
-          if (!isDraggingRef.current) {
-            if (contextMenu && e.target === e.target.getStage()) {
-              closeContextMenu();
-            }
-            if (editingAreaId !== null) {
-              if (poiInteractions.isEditMode && e.target === e.target.getStage()) {
-                if (editingPoints.length >= 3 && e.evt.button === 0) {
-                  const point = getPointerMapPosition();
-                  if (point) {
-                    insertEditingPointAtNearestEdge(point);
-                  }
-                }
-              }
-              return;
-            }
-            poiInteractions.handleStageClick(e);
-          }
-        }}
-        onTap={(e) => {
-          if (!isDraggingRef.current) {
-            if (editingAreaId !== null) {
-              if (poiInteractions.isEditMode && e.target === e.target.getStage()) {
-                if (editingPoints.length >= 3) {
-                  const point = getPointerMapPosition();
-                  if (point) {
-                    insertEditingPointAtNearestEdge(point);
-                  }
-                }
-              }
-              return;
-            }
-            poiInteractions.handleStageClick(e);
-          }
-        }}
-        draggable={poiInteractions.activeTool === "select" || poiInteractions.activeTool === "add_area"}
-        onDragStart={() => {
-          isDraggingRef.current = true;
-          if (contextMenu) {
-            closeContextMenu();
-          }
-        }}
-        onDragEnd={() => {
-          isDraggingRef.current = false;
-        }}
+        onWheel={onWheel}
         ref={stageRef}
-        className={cn(
-          poiInteractions.activeTool === "add_poi" || poiInteractions.activeTool === "add_area"
-            ? "cursor-crosshair"
-            : "cursor-move"
-        )}
-        style={{
-          cursor:
-            poiInteractions.activeTool === "add_poi" || poiInteractions.activeTool === "add_area"
-              ? "crosshair"
-              : "move"
-        }}
+        {...stageProps}
       >
-        <Layer>
-          <URLImage
-            src={mapData.map_image_url}
-            width={mapData.map_width}
-            height={mapData.map_height}
-          />
-        </Layer>
+        <MapImageLayer
+          src={mapData.map_image_url}
+          width={mapData.map_width}
+          height={mapData.map_height}
+        />
 
-        {/* Areas Layer */}
-        <Layer>
-          <AreaLayer
-            areas={areaLines}
-            hiddenAreaId={editingAreaId}
-            onAreaMenu={(areaId, event) => {
+        <AreasLayersGroup
+          data={{
+            areaLines,
+            editingAreaId,
+            editingPoints,
+            draftPoints: draftAreaPoints,
+            draftPointsFlat: draftAreaPointsFlat,
+            pointRadius,
+          }}
+          flags={{
+            isEditMode: poiInteractions.isEditMode,
+            activeTool: poiInteractions.activeTool,
+          }}
+          handlers={{
+            onAreaMenu: (areaId, event) => {
               if (!poiInteractions.isEditMode) return;
               event.evt.preventDefault();
               event.cancelBubble = true;
@@ -311,128 +233,61 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
               if (!container) return;
               const rect = container.getBoundingClientRect();
               openContextMenu(areaId, event.evt.clientX - rect.left, event.evt.clientY - rect.top);
-            }}
-          />
-        </Layer>
+            },
+            onEditGroupDragStart: onEditDragStart,
+            onEditGroupDragEnd: handleEditDragEnd,
+            onEditInsertPoint: (event) => {
+              if (!poiInteractions.isEditMode) return;
+              if (isDraggingRef.current) return;
+              if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
+              if (editingPoints.length < 3) return;
+              event.cancelBubble = true;
+              const point = getPointerMapPosition();
+              if (!point) return;
+              insertEditingPointAtNearestEdge(point);
+            },
+            onEditPointMove: updateEditingPoint,
+            onEditPointRemove: removeEditingPointAt,
+            onEditPointDragStart: () => {
+              isDraggingRef.current = true;
+              setCursor("grabbing");
+            },
+            onEditPointDragEnd: () => {
+              isDraggingRef.current = false;
+              setCursor("crosshair");
+            },
+            onDraftGroupDragStart: onDraftDragStart,
+            onDraftGroupDragEnd: handleDraftDragEnd,
+            onDraftInsertPoint: (event) => {
+              if (!poiInteractions.isEditMode || poiInteractions.activeTool !== "add_area") return;
+              if (isDraggingRef.current) return;
+              if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
+              if (draftAreaPoints.length < 3) return;
+              event.cancelBubble = true;
+              const point = getPointerMapPosition();
+              if (!point) return;
+              addDraftPoint(point);
+            },
+            onDraftPointMove: updateDraftPoint,
+            onDraftPointRemove: removeDraftPointAt,
+            onDraftPointDragStart: () => {
+              isDraggingRef.current = true;
+              setCursor("grabbing");
+            },
+            onDraftPointDragEnd: () => {
+              isDraggingRef.current = false;
+              setCursor("crosshair");
+            },
+            onSetCursor: setCursor,
+          }}
+        />
 
-        {editingAreaId !== null && (
-          <Layer>
-            <EditAreaLayer
-              points={editingPoints}
-              pointRadius={pointRadius}
-              canDrag={poiInteractions.isEditMode}
-              onGroupDragStart={handleEditGroupDragStart}
-              onGroupDragEnd={handleEditGroupDragEnd}
-              onGroupMouseEnter={() => updateCursor("grab")}
-              onGroupMouseLeave={() => updateCursor("crosshair")}
-              onGroupDragMove={() => updateCursor("grabbing")}
-              onInsertPoint={(event) => {
-                if (!poiInteractions.isEditMode) return;
-                if (isDraggingRef.current) return;
-                if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
-                if (editingPoints.length < 3) return;
-                event.cancelBubble = true;
-                const point = getPointerMapPosition();
-                if (!point) return;
-                insertEditingPointAtNearestEdge(point);
-              }}
-              onPointMove={updateEditingPoint}
-              onPointRemove={removeEditingPointAt}
-              onPointDragStart={() => {
-                isDraggingRef.current = true;
-                updateCursor("grabbing");
-              }}
-              onPointDragEnd={() => {
-                isDraggingRef.current = false;
-                updateCursor("crosshair");
-              }}
-            />
-          </Layer>
-        )}
-
-        {/* Draft Area Layer */}
-        {draftAreaPoints.length > 0 && (
-          <Layer>
-            <DraftAreaLayer
-              points={draftAreaPoints}
-              flatPoints={draftAreaPointsFlat}
-              pointRadius={pointRadius}
-              canDrag={poiInteractions.isEditMode && poiInteractions.activeTool === "add_area"}
-              onGroupDragStart={handleDraftGroupDragStart}
-              onGroupDragEnd={handleDraftGroupDragEnd}
-              onGroupMouseEnter={() => {
-                if (poiInteractions.activeTool === "add_area") {
-                  updateCursor("grab");
-                }
-              }}
-              onGroupMouseLeave={() => {
-                if (poiInteractions.activeTool === "add_area") {
-                  updateCursor("crosshair");
-                }
-              }}
-              onGroupDragMove={() => {
-                if (poiInteractions.activeTool === "add_area") {
-                  updateCursor("grabbing");
-                }
-              }}
-              onInsertPoint={(event) => {
-                if (!poiInteractions.isEditMode || poiInteractions.activeTool !== "add_area") return;
-                if (isDraggingRef.current) return;
-                if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
-                if (draftAreaPoints.length < 3) return;
-                event.cancelBubble = true;
-                const point = getPointerMapPosition();
-                if (!point) return;
-                insertDraftPointAtNearestEdge(point);
-              }}
-              onPointMove={updateDraftPoint}
-              onPointRemove={removeDraftPointAt}
-              onPointDragStart={() => {
-                isDraggingRef.current = true;
-                updateCursor("grabbing");
-              }}
-              onPointDragEnd={() => {
-                isDraggingRef.current = false;
-                updateCursor("crosshair");
-              }}
-              onPointHoverEnter={() => {
-                if (poiInteractions.activeTool === "add_area") {
-                  updateCursor("grab");
-                }
-              }}
-              onPointHoverLeave={() => {
-                if (poiInteractions.activeTool === "add_area") {
-                  updateCursor("crosshair");
-                }
-              }}
-            />
-          </Layer>
-        )}
-
-        {/* Markers Layer */}
-        <Layer>
-          {pois.map((poi) => (
-            <Group
-              key={poi.id ?? `temp-${Math.random()}`}
-              x={poi.x_coordinate}
-              y={poi.y_coordinate}
-              onClick={(e) => poiInteractions.handlePoiClick(e, poi)}
-              onTap={(e) => poiInteractions.handlePoiClick(e, poi)}
-              onMouseEnter={poiInteractions.handlePoiMouseEnter}
-              onMouseLeave={poiInteractions.handlePoiMouseLeave}
-            >
-              <Circle
-                radius={10}
-                fill={poi.icon_color || "#ff0000"}
-                stroke="white"
-                strokeWidth={2}
-                shadowColor="black"
-                shadowBlur={5}
-                shadowOpacity={0.3}
-              />
-            </Group>
-          ))}
-        </Layer>
+        <PoiLayer
+          pois={pois}
+          onPoiClick={poiInteractions.handlePoiClick}
+          onPoiMouseEnter={poiInteractions.handlePoiMouseEnter}
+          onPoiMouseLeave={poiInteractions.handlePoiMouseLeave}
+        />
       </Stage>
 
       {/* Edit Mode Toggle & Toolbar */}
@@ -444,120 +299,79 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
         visible={!isMobile}
       />
 
-      {poiInteractions.isEditMode && poiInteractions.activeTool === "add_area" && editingAreaId === null && (
-        <AreaControls
-          isEditing={false}
-          canUndo={draftUndoStack.length > 0}
-          onFinish={handleFinishArea}
-          onUndo={handleUndoPoint}
-          onCancel={handleCancelArea}
-        />
-      )}
-
-      {poiInteractions.isEditMode && editingAreaId !== null && (
-        <AreaControls
-          isEditing
-          canUndo={editingUndoStack.length > 0}
-          onFinish={() =>
-            handleEditSave(editingAreaId, editingPoints, mapAreas, (area) => {
-              setEditingAreaSnapshot(area);
-              setIsEditAreaDialogOpen(true);
-            })
-          }
-          onUndo={handleEditUndoPoint}
-          onCancel={handleEditCancel}
-        />
-      )}
-
-      {contextMenu && editingAreaId === null && poiInteractions.isEditMode && (
-        <AreaContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onEditPolygon={() => {
-            const area = mapAreas.find((item) => item.id === contextMenu.areaId);
-            if (area) {
-              startEditingArea(area);
-              closeContextMenu();
-            }
-          }}
-          onEditInfo={() => {
-            const area = mapAreas.find((item) => item.id === contextMenu.areaId);
-            if (area) {
-              openEditInfo(area);
-              closeContextMenu();
-            }
-          }}
-          onDelete={() => {
-            setDeleteTargetAreaId(contextMenu.areaId);
-            setIsDeleteDialogOpen(true);
-            closeContextMenu();
-          }}
-          onClose={closeContextMenu}
-        />
-      )}
-
-      {/* Zoom Controls Overlay */}
-      <div className="absolute bottom-4 right-4 bg-white/80 p-2 rounded shadow backdrop-blur-sm text-xs pointer-events-none">
-        Scroll to Zoom • Drag to Pan
-      </div>
-
-      <AddPoiDialog
-        open={!!poiInteractions.newPoiLocation}
-        location={poiInteractions.newPoiLocation}
+      <AreaUi
         mapId={mapData.id!}
-        categories={categories}
-        onClose={() => poiInteractions.setNewPoiLocation(null)}
-      />
-
-      <EditPoiDialog
-        open={!!poiInteractions.activePoi}
-        poi={poiInteractions.activePoi}
-        categories={categories}
-        onClose={() => poiInteractions.setActivePoi(null)}
-      />
-
-      <AreaDialogs
-        mapId={mapData.id!}
-        draftPoints={draftAreaPoints}
-        editPoints={editingPoints}
-        editSnapshot={editingAreaSnapshot}
-        isCreateOpen={isAreaDialogOpen}
-        isEditOpen={isEditAreaDialogOpen}
-        isDeleteOpen={isDeleteDialogOpen}
-        onCreateOpenChange={setIsAreaDialogOpen}
-        onEditOpenChange={setIsEditAreaDialogOpen}
-        onDeleteOpenChange={setIsDeleteDialogOpen}
-        onCreateSuccess={(area) =>
-          handleAreaCreated(area, {
-            onCreated: (created) => setMapAreas((prev) => [...prev, created]),
-            onResetDraft: resetDraft,
-            onCloseCreate: () => setIsAreaDialogOpen(false),
-            onResetTool: () => poiInteractions.setActiveTool("select"),
-          })
-        }
-        onEditSuccess={(area) =>
-          handleEditFormSuccess(area, {
-            onUpdated: (updated) =>
-              setMapAreas((prev) => prev.map((item) => (item.id === updated.id ? updated : item))),
-            onResetEdit: resetEditing,
-            onCloseEdit: () => setIsEditAreaDialogOpen(false),
-          })
-        }
-        onDeleteConfirm={() => {
-          if (deleteTargetAreaId !== null) {
-            handleDeleteArea(deleteTargetAreaId, {
-              onDeleted: (deletedId) =>
-                setMapAreas((prev) => prev.filter((item) => item.id !== deletedId)),
-              onResetEdit: resetEditing,
-              onCloseDialogs: () => {
-                setIsEditAreaDialogOpen(false);
-                setIsDeleteDialogOpen(false);
-                setDeleteTargetAreaId(null);
-                closeContextMenu();
-              },
-            });
-          }
+        areas={{
+          list: mapAreas,
+          editingId: editingAreaId,
+          editSnapshot: editingAreaSnapshot,
+          draftPoints: draftAreaPoints,
+          editPoints: editingPoints,
         }}
+        undo={{
+          draft: draftUndoStack,
+          edit: editingUndoStack,
+        }}
+        ui={{
+          isEditMode: poiInteractions.isEditMode,
+          activeTool: poiInteractions.activeTool,
+          contextMenu: contextMenu,
+        }}
+        dialogs={{
+          createOpen: isAreaDialogOpen,
+          editOpen: isEditAreaDialogOpen,
+          deleteOpen: isDeleteDialogOpen,
+          deleteTargetId: deleteTargetAreaId,
+        }}
+        onDialogToggles={{
+          setCreateOpen: setIsAreaDialogOpen,
+          setEditOpen: setIsEditAreaDialogOpen,
+          setDeleteOpen: setIsDeleteDialogOpen,
+          setDeleteTargetId: setDeleteTargetAreaId,
+        }}
+        actions={{
+          onDraftFinish: handleDraftFinish,
+          onDraftUndo: handleDraftUndo,
+          onDraftCancel: handleDraftCancel,
+          onEditUndo: handleEditUndo,
+          onEditCancel: handleEditCancel,
+          onCloseContextMenu: closeContextMenu,
+          onStartEditingArea: startEditingArea,
+          onOpenEditInfo: openEditInfo,
+          onSetEditSnapshot: setEditingAreaSnapshot,
+          onRequestEditDialog: openEditDialogIfValid,
+          onCreateSuccess: applyDraftCreate,
+          onEditSuccess: applyEditResult,
+          onDeleteConfirm: handleDeleteArea,
+          onAreaCreated: addArea,
+          onAreaUpdated: updateArea,
+          onAreaDeleted: removeArea,
+          onResetDraft: resetDraft,
+          onResetEdit: cancelEditing,
+          onResetTool: () => poiInteractions.setActiveTool("select"),
+          onCloseDialogs: () => {
+            setIsEditAreaDialogOpen(false);
+            setIsDeleteDialogOpen(false);
+            setDeleteTargetAreaId(null);
+            closeContextMenu();
+          },
+        }}
+      />
+
+      <MapOverlayHints
+        isEditMode={poiInteractions.isEditMode}
+        activeTool={poiInteractions.activeTool}
+        isMobile={isMobile}
+        showZoomHint
+      />
+
+      <PoiDialogs
+        mapId={mapData.id!}
+        categories={categories}
+        activePoi={poiInteractions.activePoi}
+        newPoiLocation={poiInteractions.newPoiLocation}
+        onCloseNewPoi={() => poiInteractions.setNewPoiLocation(null)}
+        onCloseEditPoi={() => poiInteractions.setActivePoi(null)}
       />
 
     </div>

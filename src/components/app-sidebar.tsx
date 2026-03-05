@@ -13,27 +13,28 @@ import {
 } from "@/components/ui/sidebar"
 import { Home, LayoutGrid, Map, Layers, LogIn } from "lucide-react"
 import Link from "next/link"
+import { routeWithLocale } from "@/i18n/routes"
 import { UserButton, useUser } from "@stackframe/stack"
 
 const items = [
   {
     title: "Dashboard",
-    url: "/",
+    url: routeWithLocale("/", "es"),
     icon: Home,
   },
   {
     title: "Maps",
-    url: "/", 
+    url: routeWithLocale("/", "es"), 
     icon: Map,
   },
   {
     title: "Areas",
-    url: "/areas", 
+    url: routeWithLocale("/areas", "es"), 
     icon: Layers,
   },
   {
     title: "Categories",
-    url: "/categories",
+    url: routeWithLocale("/categories", "es"),
     icon: LayoutGrid,
   },
 ]
@@ -79,7 +80,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/login">
+                <Link href={routeWithLocale("/login", "es")}>
                   <LogIn />
                   <span>Login</span>
                 </Link>

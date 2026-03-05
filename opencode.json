@@ -9,6 +9,15 @@
         "--id=67d221efb4b9de65095a2579",
         "--name=konva_documentation"
       ]
-    }
+    },
+    "next-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "next-devtools-mcp@latest"
+      ]
+    },
+
   }
 }
