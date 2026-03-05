@@ -1,0 +1,10 @@
+{
+  "map": {
+    "hints": {
+      "zoom": "Desplaza para acercar • Arrastra para mover",
+      "addArea": "Añadir área: Haz clic para agregar puntos • Arrastra para mover",
+      "select": "Seleccionar: Haz clic en un área • Clic derecho para opciones",
+      "mobileZoom": "Pinza para acercar • Arrastra con dos dedos para mover"
+    }
+  }
+}
