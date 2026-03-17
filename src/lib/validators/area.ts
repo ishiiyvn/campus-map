@@ -26,6 +26,7 @@ export const areaSchema = z.object({
   map_id: z.number().int(),
   parent_area_id: z.number().int().nullable().optional(),
   category_id: z.number().int().nullable().optional(),
+  layer_id: z.number().int().nullable().optional(),
   name: z.string().min(1, "El nombre del área es obligatorio"),
   code: z.string().min(1, "El código es obligatorio"),
   description: z.string().optional(),
@@ -42,5 +43,8 @@ export const areaSchema = z.object({
   properties: areaPropertiesSchema.optional(),
 });
 
+export const areaUpdateSchema = areaSchema.partial();
+
 export type AreaInput = z.input<typeof areaSchema>;
 export type AreaOutput = z.infer<typeof areaSchema>;
+export type AreaUpdateInput = z.input<typeof areaUpdateSchema>;

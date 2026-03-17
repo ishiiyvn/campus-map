@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { getMapBySlug } from "@/server/actions/maps";
-import { getPointsOfInterest } from "@/server/actions/pois";
-import { getCategories } from "@/server/actions/categories";
-import { getAreasByMapId } from "@/server/actions/areas";
+import { getMapBySlug } from "@/server/queries/maps";
+import { getPointsOfInterest } from "@/server/queries/pois";
+import { getCategories } from "@/server/queries/categories";
+import { getAreasByMapId } from "@/server/queries/areas";
+import { getLayers } from "@/server/queries/layers";
 import MapViewerWrapper from "@/components/maps/views/map-viewer-wrapper";
 import { Metadata } from "next";
 
@@ -37,6 +38,7 @@ export default async function PublicMapPage({ params }: PublicMapPageProps) {
   const pois = await getPointsOfInterest(); // TODO: Filter by map.id
   const categories = await getCategories();
   const areas = await getAreasByMapId(map.id);
+  const layers = await getLayers(map.id);
 
   return (
     <div className="w-full h-screen bg-slate-100 relative">
@@ -49,6 +51,7 @@ export default async function PublicMapPage({ params }: PublicMapPageProps) {
         pois={pois || []}
         categories={categories || []}
         areas={areas || []}
+        layers={layers || []}
         readOnly={true}
       />
     </div>

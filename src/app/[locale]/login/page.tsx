@@ -10,7 +10,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
   const { locale } = await params;
   const user = await stackServerApp.getUser();
   if (user) {
-    redirect(`/${locale}`);
+    redirect(`/${locale}/maps`);
   }
 
   return <SignIn fullPage />;

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { stackServerApp } from "@/stack/server";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { withDefaultLocale } from "@/i18n/redirects";
 
@@ -20,10 +20,10 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
       <Suspense fallback={<div className="hidden md:block" style={{ width: "var(--sidebar-width)" }} />}>
         <AppSidebar />
       </Suspense>
-      <main className="w-full">
+      <SidebarInset>
         <SidebarTrigger />
         {children}
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

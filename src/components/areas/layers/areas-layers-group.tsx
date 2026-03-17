@@ -6,15 +6,20 @@ import { AreaLayer } from "@/components/areas/layers/area-layer";
 import { DraftAreaLayer } from "@/components/areas/layers/draft-area-layer";
 import { EditAreaLayer } from "@/components/areas/layers/edit-area-layer";
 import type { AreaPoint } from "@/components/areas/utils/types";
+import type { Layer as LayerType } from "@/server/db/schema";
 
 interface AreaRenderData {
   id: number;
+  layer_id: number | null;
+  category_id: number | null;
   points: number[];
   fill: string;
   stroke: string;
 }
 
 interface AreasLayersGroupProps {
+  layers: LayerType[];
+  layerVisibility: Record<number, boolean>;
   data: {
     areaLines: AreaRenderData[];
     editingAreaId: number | null;
@@ -47,7 +52,7 @@ interface AreasLayersGroupProps {
   };
 }
 
-export function AreasLayersGroup({ data, flags, handlers }: AreasLayersGroupProps) {
+export function AreasLayersGroup({ layers, layerVisibility, data, flags, handlers }: AreasLayersGroupProps) {
   const { areaLines, editingAreaId, editingPoints, draftPoints, draftPointsFlat, pointRadius } = data;
   const { isEditMode, activeTool } = flags;
   const {
@@ -69,15 +74,53 @@ export function AreasLayersGroup({ data, flags, handlers }: AreasLayersGroupProp
     onSetCursor,
   } = handlers;
 
+  const sortedLayers = [...layers].sort((a, b) => a.display_order - b.display_order);
+
+  const areasByLayer = areaLines.reduce((acc, area) => {
+    const layerId = area.layer_id ?? "unassigned";
+    if (!acc[layerId]) {
+      acc[layerId] = [];
+    }
+    acc[layerId].push(area);
+    return acc;
+  }, {} as Record<string | number, AreaRenderData[]>);
+
+  const getLayerName = (layerId: number | null) => {
+    if (layerId === null) return "Sin capa";
+    const layer = layers.find((l) => l.id === layerId);
+    return layer?.name ?? "Capa desconocida";
+  };
+
   return (
     <>
-      <Layer>
-        <AreaLayer
-          areas={areaLines}
-          hiddenAreaId={editingAreaId}
-          onAreaMenu={onAreaMenu}
-        />
-      </Layer>
+      {sortedLayers.map((layer) => {
+        const isVisible = layerVisibility[layer.id] ?? true;
+        const layerAreas = areasByLayer[layer.id] ?? [];
+
+        if (!isVisible || layerAreas.length === 0) {
+          return null;
+        }
+
+        return (
+          <Layer key={layer.id} name={layer.name}>
+            <AreaLayer
+              areas={layerAreas}
+              hiddenAreaId={editingAreaId}
+              onAreaMenu={onAreaMenu}
+            />
+          </Layer>
+        );
+      })}
+
+      {areasByLayer["unassigned"] && areasByLayer["unassigned"].length > 0 && (
+        <Layer name="Sin capa">
+          <AreaLayer
+            areas={areasByLayer["unassigned"]}
+            hiddenAreaId={editingAreaId}
+            onAreaMenu={onAreaMenu}
+          />
+        </Layer>
+      )}
 
       {editingAreaId !== null && (
         <Layer>

@@ -42,7 +42,7 @@ export function MapOverlayHints({
   if (hints.length === 0) return null;
 
   return (
-    <div className="absolute bottom-4 right-4 flex flex-col gap-2 text-xs pointer-events-none">
+    <div className="fixed bottom-4 right-6 sm:bottom-6 sm:right-8 flex flex-col gap-2 text-xs pointer-events-none z-40">
       {hints.map((hint, index) => (
         <div
           key={`${hint}-${index}`}

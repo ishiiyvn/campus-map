@@ -7,7 +7,7 @@ import { AreaControlsOverlay } from "@/components/areas/overlays/area-controls-o
 import { AreaContextMenuOverlay } from "@/components/areas/overlays/area-context-menu-overlay";
 import { AreaDialogsOverlay } from "@/components/areas/overlays/area-dialogs-overlay";
 
-interface AreaUiProps {
+export interface AreaUiProps {
   mapId: number;
   areas: {
     list: Area[];
@@ -95,6 +95,7 @@ export function AreaUi({ mapId, areas, undo, ui, dialogs, onDialogToggles, actio
         isEditMode={isEditMode}
         activeTool={activeTool}
         editingId={editingId}
+        draftPoints={draftPoints}
         editPoints={editPoints}
         mapAreas={list}
         draftUndoStack={draftUndoStack}

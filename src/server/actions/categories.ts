@@ -5,34 +5,6 @@ import { categories } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { categorySchema } from "@/lib/validators";
 
-// ---------------------------
-// FETCH CATEGORIES 
-// ---------------------------
-
-
-// Fetch all categories
-export async function getCategories() {
-  try {
-    return await db.select().from(categories);
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-  }
-}
-
-
-// Fetch a single category by ID
-export async function getCategoryById(id: number) {
-  try {
-    return await db.select().from(categories).where(eq(categories.id, id));
-  } catch (error) {
-    console.error("Error fetching category by ID:", error);
-  }
-}
-
-// ---------------------------
-// CREATE / UPDATE / DELETE
-// ---------------------------
-
 export async function createCategory(data: unknown) {
   try {
     // Validate incoming data

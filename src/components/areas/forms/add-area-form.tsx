@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { createArea } from "@/server/actions/areas";
 import { AreaInput, areaSchema } from "@/lib/validators";
-import { Area } from "@/server/db/schema";
+import { Area, Category, Layer } from "@/server/db/schema";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,6 +18,8 @@ interface AddAreaFormProps {
   polygonCoordinates?: { x: number; y: number }[];
   onSuccess?: (area: Area) => void;
   refreshOnSuccess?: boolean;
+  categories?: Category[];
+  layers?: Layer[];
 }
 
 export default function AddAreaForm({ 
@@ -25,6 +27,8 @@ export default function AddAreaForm({
   polygonCoordinates = [], 
   onSuccess,
   refreshOnSuccess = true,
+  categories = [],
+  layers = [],
 }: AddAreaFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +81,7 @@ export default function AddAreaForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <AreaFormFields form={form} />
+        <AreaFormFields form={form} categories={categories} layers={layers} />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Add Area

@@ -3,7 +3,7 @@
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
-import { Area } from "@/server/db/schema";
+import { Area, Category, Layer } from "@/server/db/schema";
 import { updateArea, deleteArea } from "@/server/actions/areas";
 import { AreaInput, areaSchema } from "@/lib/validators";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,8 @@ interface EditAreaFormProps {
   polygonCoordinates?: { x: number; y: number }[];
   onSuccess?: (updated: Area) => void;
   refreshOnSuccess?: boolean;
+  categories?: Category[];
+  layers?: Layer[];
 }
 
 type PolygonCoordinate = { x: number; y: number } | Record<string, unknown>;
@@ -28,6 +30,8 @@ export default function EditAreaForm({
   polygonCoordinates,
   onSuccess,
   refreshOnSuccess = true,
+  categories = [],
+  layers = [],
 }: EditAreaFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +43,8 @@ export default function EditAreaForm({
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
+      category_id: area.category_id ?? undefined,
+      layer_id: area.layer_id ?? undefined,
       polygon_coordinates: polygonCoordinates ?? ((area.polygon_coordinates as PolygonCoordinate[]) || []),
     },
   });
@@ -49,6 +55,8 @@ export default function EditAreaForm({
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
+      category_id: area.category_id ?? undefined,
+      layer_id: area.layer_id ?? undefined,
       polygon_coordinates: polygonCoordinates ?? (area.polygon_coordinates as PolygonCoordinate[]),
     });
   }, [area, form, polygonCoordinates]);
@@ -106,7 +114,7 @@ export default function EditAreaForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <AreaFormFields form={form} initialCode={area.code} />
+        <AreaFormFields form={form} initialCode={area.code} categories={categories} layers={layers} />
         
         <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={isLoading}>

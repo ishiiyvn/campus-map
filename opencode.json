@@ -16,8 +16,9 @@
         "npx",
         "-y",
         "next-devtools-mcp@latest"
-      ]
-    },
-
+      ],
+      "enabled": true,
+      "environment": {}
+    }
   }
 }

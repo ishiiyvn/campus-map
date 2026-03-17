@@ -11,43 +11,44 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Home, LayoutGrid, Map, Layers, LogIn } from "lucide-react"
+import { LayoutGrid, Map, Layers, LogIn } from "lucide-react"
 import Link from "next/link"
 import { routeWithLocale } from "@/i18n/routes"
 import { UserButton, useUser } from "@stackframe/stack"
-
-const items = [
-  {
-    title: "Dashboard",
-    url: routeWithLocale("/", "es"),
-    icon: Home,
-  },
-  {
-    title: "Maps",
-    url: routeWithLocale("/", "es"), 
-    icon: Map,
-  },
-  {
-    title: "Areas",
-    url: routeWithLocale("/areas", "es"), 
-    icon: Layers,
-  },
-  {
-    title: "Categories",
-    url: routeWithLocale("/categories", "es"),
-    icon: LayoutGrid,
-  },
-]
+import { useTranslations } from "next-intl"
 
 export function AppSidebar() {
   const user = useUser();
+  const t = useTranslations("sidebar");
+  const items = [
+    {
+      title: t("maps"),
+      url: routeWithLocale("/maps", "es"),
+      icon: Map,
+    },
+    {
+      title: t("layers"),
+      url: routeWithLocale("/layers", "es"),
+      icon: Layers,
+    },
+    {
+      title: t("areas"),
+      url: routeWithLocale("/areas", "es"),
+      icon: Layers,
+    },
+    {
+      title: t("categories"),
+      url: routeWithLocale("/categories", "es"),
+      icon: LayoutGrid,
+    },
+  ];
 
   return (
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-2">
             <Map className="h-6 w-6" />
-            <span className="font-bold">Campus Map</span>
+            <span className="font-bold">{t("brand")}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -73,7 +74,7 @@ export function AppSidebar() {
           <div className="flex items-center gap-2 px-2 py-1">
             <UserButton />
             <span className="truncate text-xs text-muted-foreground">
-              {user.primaryEmail ?? user.displayName ?? "Signed in"}
+              {user.primaryEmail ?? user.displayName ?? t("signedIn")}
             </span>
           </div>
         ) : (
@@ -82,7 +83,7 @@ export function AppSidebar() {
               <SidebarMenuButton asChild>
                 <Link href={routeWithLocale("/login", "es")}>
                   <LogIn />
-                  <span>Login</span>
+                  <span>{t("login")}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -8,6 +8,7 @@ interface AreaControlsOverlayProps {
   isEditMode: boolean;
   activeTool: string;
   editingId: number | null;
+  draftPoints: AreaPoint[];
   editPoints: AreaPoint[];
   mapAreas: Area[];
   draftUndoStack: AreaPoint[][];
@@ -31,6 +32,7 @@ export function AreaControlsOverlay({
   isEditMode,
   activeTool,
   editingId,
+  draftPoints,
   editPoints,
   mapAreas,
   draftUndoStack,
@@ -53,6 +55,8 @@ export function AreaControlsOverlay({
           onFinish={onDraftFinish}
           onUndo={onDraftUndo}
           onCancel={onDraftCancel}
+          showCancel={draftPoints.length > 0}
+          isFinishDisabled={draftPoints.length < 3}
         />
       )}
 
@@ -68,6 +72,7 @@ export function AreaControlsOverlay({
           }
           onUndo={onEditUndo}
           onCancel={onEditCancel}
+          isFinishDisabled={editPoints.length < 3}
         />
       )}
     </>

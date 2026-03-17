@@ -1,4 +1,34 @@
 {
+  "sidebar": {
+    "brand": "Campus Map",
+    "maps": "Mapas",
+    "layers": "Capas",
+    "areas": "Áreas",
+    "categories": "Categorías",
+    "login": "Iniciar sesión",
+    "signedIn": "Sesión iniciada"
+  },
+  "toolbar": {
+    "editModeLabel": "Modo edición",
+    "editModeOn": "Activado",
+    "editModeOff": "Desactivado",
+    "toolSelect": "Seleccionar / Mover",
+    "toolAddPoi": "Añadir marcador",
+    "toolAddArea": "Añadir área"
+  },
+  "areas": {
+    "controls": {
+      "finish": "Finalizar área",
+      "undo": "Deshacer",
+      "cancel": "Cancelar"
+    },
+    "draftGuard": {
+      "title": "Descartar borrador",
+      "description": "Tienes un borrador de área en progreso. ¿Quieres descartarlo o seguir editando?",
+      "keep": "Seguir editando",
+      "discard": "Descartar"
+    }
+  },
   "map": {
     "hints": {
       "zoom": "Desplaza para acercar • Arrastra para mover",

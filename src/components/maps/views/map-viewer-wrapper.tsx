@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { MapOutput } from "@/lib/validators/map";
-import { Area, Category, PointOfInterest } from "@/server/db/schema";
+import { Area, Category, PointOfInterest, Layer } from "@/server/db/schema";
 
 const MapViewer = dynamic(() => import("./map-viewer"), {
   ssr: false,
@@ -18,6 +18,7 @@ interface MapViewerWrapperProps {
   pois: PointOfInterest[];
   categories: Category[];
   areas: Area[];
+  layers?: Layer[];
   readOnly?: boolean;
 }
 

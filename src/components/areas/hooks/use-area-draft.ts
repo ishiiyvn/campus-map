@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { AreaPoint } from "@/components/areas/utils/types";
 import { insertPointBetweenNearestEdges } from "@/components/areas/utils/geometry";
+import { arePointsEqual } from "@/components/areas/utils/points";
 import { toast } from "sonner";
 
 export function useAreaDraft() {
   const [draftAreaPoints, setDraftAreaPoints] = useState<AreaPoint[]>([]);
   const [draftUndoStack, setDraftUndoStack] = useState<AreaPoint[][]>([]);
+  const isDraftDraggingRef = useRef(false);
 
   const draftAreaPointsFlat = useMemo(
     () => draftAreaPoints.flatMap((point) => [point.x, point.y]),
@@ -17,7 +19,9 @@ export function useAreaDraft() {
   const addDraftPoint = useCallback((point: AreaPoint) => {
     setDraftAreaPoints((prev) => {
       const next = insertPointBetweenNearestEdges(prev, point);
-      setDraftUndoStack((stack) => [...stack, prev]);
+      if (!arePointsEqual(prev, next)) {
+        setDraftUndoStack((stack) => [...stack, prev]);
+      }
       return next;
     });
   }, []);
@@ -29,14 +33,28 @@ export function useAreaDraft() {
   const removeDraftPointAt = useCallback((index: number) => {
     setDraftAreaPoints((prev) => {
       if (prev.length === 0) return prev;
-      setDraftUndoStack((stack) => [...stack, prev]);
-      return prev.filter((_, i) => i !== index);
+      const next = prev.filter((_, i) => i !== index);
+      if (!arePointsEqual(prev, next)) {
+        setDraftUndoStack((stack) => [...stack, prev]);
+      }
+      return next;
     });
   }, []);
 
   const moveDraftBy = useCallback((dx: number, dy: number) => {
     if (dx === 0 && dy === 0) return;
     setDraftAreaPoints((prev) => prev.map((point) => ({ x: point.x + dx, y: point.y + dy })));
+  }, []);
+
+  const beginDraftDrag = useCallback(() => {
+    if (isDraftDraggingRef.current) return;
+    if (draftAreaPoints.length === 0) return;
+    setDraftUndoStack((stack) => [...stack, draftAreaPoints]);
+    isDraftDraggingRef.current = true;
+  }, [draftAreaPoints]);
+
+  const endDraftDrag = useCallback(() => {
+    isDraftDraggingRef.current = false;
   }, []);
 
   const resetDraft = useCallback(() => {
@@ -55,13 +73,21 @@ export function useAreaDraft() {
 
   const undoDraft = useCallback(() => {
     if (draftUndoStack.length === 0) return;
+    const current = draftAreaPoints;
     const next = [...draftUndoStack];
-    const last = next.pop();
-    if (last) {
-      setDraftAreaPoints(last);
-      setDraftUndoStack(next);
+    while (next.length > 0) {
+      const last = next.pop();
+      if (last && !arePointsEqual(last, current)) {
+        while (next.length > 0 && arePointsEqual(next[next.length - 1]!, last)) {
+          next.pop();
+        }
+        setDraftAreaPoints(last);
+        setDraftUndoStack(next);
+        return;
+      }
     }
-  }, [draftUndoStack]);
+    setDraftUndoStack(next);
+  }, [draftAreaPoints, draftUndoStack]);
 
   return {
     draftAreaPoints,
@@ -71,6 +97,8 @@ export function useAreaDraft() {
     updateDraftPoint,
     removeDraftPointAt,
     moveDraftBy,
+    beginDraftDrag,
+    endDraftDrag,
     resetDraft,
     openDraftDialogIfValid,
     undoDraft,

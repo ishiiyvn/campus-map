@@ -1,16 +1,19 @@
 "use client";
 
 // db
-import { Area, Category, PointOfInterest } from "@/server/db/schema";
+import { Area, Category, PointOfInterest, Layer as DbLayer } from "@/server/db/schema";
 
 // zod validators
 import { MapOutput } from "@/lib/validators/map";
 
+// server actions
+import { updateArea as updateAreaAction } from "@/server/actions/areas";
+
 // components
+import { PoiLayer } from "@/components/pois/layers/poi-layer";
 import { PoiDialogs } from "@/components/pois/overlays/poi-dialogs";
-import { MapEditorToolbar } from "../editor-tools/map-editor-toolbar";
 import { AreasLayersGroup } from "@/components/areas/layers/areas-layers-group";
-import { AreaUi } from "@/components/areas/overlays/area-ui";
+import { MapOverlays } from "@/components/maps/overlays/map-overlays";
 
 // konva components
 import { Stage, Layer } from "react-konva";
@@ -26,13 +29,15 @@ import { useAreaDraft } from "@/components/areas/hooks/use-area-draft";
 import { useAreaEdit } from "@/components/areas/hooks/use-area-edit";
 import { useAreaActions } from "@/components/areas/hooks/use-area-actions";
 import { useMapAreasState } from "@/components/areas/hooks/use-map-areas-state";
+import { useAreaDragHandlers } from "@/components/areas/hooks/use-area-drag-handlers";
 import { useMapStage } from "@/components/maps/hooks/use-map-stage";
 import { useMapInteractions } from "@/components/maps/hooks/use-map-interactions";
 import { useStageInteractions } from "@/components/maps/hooks/use-stage-interactions";
 import { buildAreaRenderData } from "@/components/areas/utils/area-mappers";
-import { PoiLayer } from "@/components/pois/layers/poi-layer";
 import { MapImageLayer } from "@/components/maps/layers/map-image-layer";
-import { MapOverlayHints } from "@/components/maps/overlays/map-overlay-hints";
+import { useMapOverlaysProps } from "@/components/maps/hooks/use-map-overlays-props";
+import { DraftToolSwitchDialog } from "@/components/areas/dialogs/draft-tool-switch-dialog";
+import { LayerSidebar } from "@/components/layers/layer-sidebar";
 
 
 interface MapViewerProps {
@@ -40,11 +45,12 @@ interface MapViewerProps {
   pois: PointOfInterest[];
   categories: Category[];
   areas: Area[];
+  layers?: DbLayer[];
   readOnly?: boolean;
 }
 
 
-export default function MapViewer({ mapData, pois, categories, areas, readOnly = true }: MapViewerProps) {
+export default function MapViewer({ mapData, pois, categories, areas, layers = [], readOnly = true }: MapViewerProps) {
   // readOnly is currently unused but kept for interface compatibility
   void readOnly;
   const stageRef = useRef<Konva.Stage>(null);
@@ -63,6 +69,8 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     updateDraftPoint,
     removeDraftPointAt,
     moveDraftBy,
+    beginDraftDrag,
+    endDraftDrag,
     resetDraft,
     openDraftDialogIfValid,
     undoDraft,
@@ -85,6 +93,8 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     removeEditingPointAt,
     insertEditingPointAtNearestEdge,
     moveEditingBy,
+    beginEditingDrag,
+    endEditingDrag,
     cancelEditing,
     undoEditing,
     setEditingOriginalPoints,
@@ -100,7 +110,46 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     applyDraftCreate,
   } = useAreaActions();
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
-  const { mapAreas, addArea, updateArea, removeArea } = useMapAreasState(areas);
+  const [isDraftGuardOpen, setIsDraftGuardOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    { type: "tool"; tool: "select" | "add_poi" | "add_area" } | { type: "editModeOff" } | null
+  >(null);
+  
+  // Layer visibility state
+  const [layerVisibility, setLayerVisibility] = useState<Record<number, boolean>>({});
+  const [imageVisible, setImageVisible] = useState(true);
+  const [imageOpacity, setImageOpacity] = useState(1);
+  const [isLayerSidebarOpen, setIsLayerSidebarOpen] = useState(false);
+
+  // Initialize layer visibility from layers prop
+  useEffect(() => {
+    const initialVisibility: Record<number, boolean> = {};
+    layers.forEach((layer) => {
+      initialVisibility[layer.id] = layer.is_visible;
+    });
+    setLayerVisibility(initialVisibility);
+  }, [layers]);
+
+  const toggleLayerVisibility = useCallback((layerId: number) => {
+    setLayerVisibility((prev) => ({
+      ...prev,
+      [layerId]: !prev[layerId],
+    }));
+  }, []);
+
+  const { mapAreas, addArea, updateArea: updateAreaState, removeArea } = useMapAreasState(areas);
+
+  const handleMoveAreaToLayer = useCallback(async (areaId: number, newLayerId: number | null) => {
+    try {
+      await updateAreaAction(areaId, { layer_id: newLayerId });
+      const updatedArea = mapAreas.find((a) => a.id === areaId);
+      if (updatedArea) {
+        updateAreaState({ ...updatedArea, layer_id: newLayerId });
+      }
+    } catch (error) {
+      console.error("Error moving area to layer:", error);
+    }
+  }, [mapAreas]);
 
   // State for interaction
   const isMobile = useIsMobile();
@@ -114,12 +163,41 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     onAreaPointAdd: addDraftPointHandler,
   });
 
+  const isDraftActive = draftAreaPoints.length > 0;
+
+  const requestToolChange = useCallback((tool: "select" | "add_poi" | "add_area") => {
+    if (tool === poiInteractions.activeTool) return;
+    if (isDraftActive && tool !== "add_area") {
+      setPendingAction({ type: "tool", tool });
+      setIsDraftGuardOpen(true);
+      return;
+    }
+    poiInteractions.setActiveTool(tool);
+  }, [isDraftActive, poiInteractions]);
+
   // Ensure edit mode is disabled on mobile
   useEffect(() => {
     if (isMobile) {
       poiInteractions.setIsEditMode(false);
     }
   }, [isMobile, poiInteractions]);
+
+  const wasEditModeRef = useRef(poiInteractions.isEditMode);
+
+  useEffect(() => {
+    if (!isDraftActive || poiInteractions.activeTool === "add_area") return;
+    setPendingAction({ type: "tool", tool: "add_area" });
+    setIsDraftGuardOpen(true);
+  }, [isDraftActive, poiInteractions.activeTool]);
+
+  useEffect(() => {
+    const wasEditMode = wasEditModeRef.current;
+    if (wasEditMode && !poiInteractions.isEditMode && isDraftActive && !isDraftGuardOpen) {
+      setPendingAction({ type: "editModeOff" });
+      setIsDraftGuardOpen(true);
+    }
+    wasEditModeRef.current = poiInteractions.isEditMode;
+  }, [isDraftActive, isDraftGuardOpen, poiInteractions.isEditMode]);
 
   const { onWheel } = useStageZoom({
     stageRef,
@@ -131,30 +209,6 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
 
   const handleDraftFinish = () => {
     openDraftDialogIfValid(() => setIsAreaDialogOpen(true));
-  };
-
-  const handleDraftDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
-    const node = event.target;
-    const dx = node.x();
-    const dy = node.y();
-    if (dx !== 0 || dy !== 0) {
-      moveDraftBy(dx, dy);
-      node.position({ x: 0, y: 0 });
-    }
-    isDraggingRef.current = false;
-    setCursor("crosshair");
-  };
-
-  const handleEditDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
-    const node = event.target;
-    const dx = node.x();
-    const dy = node.y();
-    if (dx !== 0 || dy !== 0) {
-      moveEditingBy(dx, dy);
-      node.position({ x: 0, y: 0 });
-    }
-    isDraggingRef.current = false;
-    setCursor("crosshair");
   };
 
   const handleEditUndo = () => {
@@ -173,6 +227,56 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     cancelEditing();
   };
 
+  const { toolbar, hints, areaUi, isMobile: overlayIsMobile } = useMapOverlaysProps({
+    mapId: mapData.id!,
+    isMobile,
+    isEditMode: poiInteractions.isEditMode,
+    activeTool: poiInteractions.activeTool,
+    onEditModeChange: poiInteractions.setIsEditMode,
+    onToolChange: requestToolChange,
+    mapAreas,
+    editingAreaId,
+    editingAreaSnapshot,
+    draftPoints: draftAreaPoints,
+    editPoints: editingPoints,
+    draftUndoStack,
+    editingUndoStack,
+    contextMenu,
+    isCreateOpen: isAreaDialogOpen,
+    isEditOpen: isEditAreaDialogOpen,
+    isDeleteOpen: isDeleteDialogOpen,
+    deleteTargetId: deleteTargetAreaId,
+    setCreateOpen: setIsAreaDialogOpen,
+    setEditOpen: setIsEditAreaDialogOpen,
+    setDeleteOpen: setIsDeleteDialogOpen,
+    setDeleteTargetId: setDeleteTargetAreaId,
+    onDraftFinish: handleDraftFinish,
+    onDraftUndo: handleDraftUndo,
+    onDraftCancel: handleDraftCancel,
+    onEditUndo: handleEditUndo,
+    onEditCancel: handleEditCancel,
+    onCloseContextMenu: closeContextMenu,
+    onStartEditingArea: startEditingArea,
+    onOpenEditInfo: openEditInfo,
+    onSetEditSnapshot: setEditingAreaSnapshot,
+    onRequestEditDialog: openEditDialogIfValid,
+    onCreateSuccess: applyDraftCreate,
+    onEditSuccess: applyEditResult,
+    onDeleteConfirm: handleDeleteArea,
+    onAreaCreated: addArea,
+    onAreaUpdated: updateAreaState,
+    onAreaDeleted: removeArea,
+    onResetDraft: resetDraft,
+    onResetEdit: cancelEditing,
+    onResetTool: () => poiInteractions.setActiveTool("select"),
+    onCloseDialogs: () => {
+      setIsEditAreaDialogOpen(false);
+      setIsDeleteDialogOpen(false);
+      setDeleteTargetAreaId(null);
+      closeContextMenu();
+    },
+  });
+
   const { setCursor, stageProps } = useStageInteractions({
     stageRef,
     isDraggingRef,
@@ -183,6 +287,15 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
     insertEditingPointAtNearestEdge,
     getPointerMapPosition,
     poiInteractions,
+  });
+
+  const { handleDraftDragEnd, handleEditDragEnd } = useAreaDragHandlers({
+    isDraggingRef,
+    setCursor,
+    moveDraftBy,
+    moveEditingBy,
+    endDraftDrag,
+    endEditingDrag,
   });
 
   const { onDraftDragStart, onEditDragStart } = useMapInteractions({
@@ -209,9 +322,13 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
           src={mapData.map_image_url}
           width={mapData.map_width}
           height={mapData.map_height}
+          visible={imageVisible}
+          opacity={imageOpacity}
         />
 
         <AreasLayersGroup
+          layers={layers}
+          layerVisibility={layerVisibility}
           data={{
             areaLines,
             editingAreaId,
@@ -234,7 +351,10 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
               const rect = container.getBoundingClientRect();
               openContextMenu(areaId, event.evt.clientX - rect.left, event.evt.clientY - rect.top);
             },
-            onEditGroupDragStart: onEditDragStart,
+            onEditGroupDragStart: () => {
+              onEditDragStart();
+              beginEditingDrag();
+            },
             onEditGroupDragEnd: handleEditDragEnd,
             onEditInsertPoint: (event) => {
               if (!poiInteractions.isEditMode) return;
@@ -251,12 +371,17 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
             onEditPointDragStart: () => {
               isDraggingRef.current = true;
               setCursor("grabbing");
+              beginEditingDrag();
             },
             onEditPointDragEnd: () => {
               isDraggingRef.current = false;
               setCursor("crosshair");
+              endEditingDrag();
             },
-            onDraftGroupDragStart: onDraftDragStart,
+            onDraftGroupDragStart: () => {
+              onDraftDragStart();
+              beginDraftDrag();
+            },
             onDraftGroupDragEnd: handleDraftDragEnd,
             onDraftInsertPoint: (event) => {
               if (!poiInteractions.isEditMode || poiInteractions.activeTool !== "add_area") return;
@@ -273,10 +398,12 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
             onDraftPointDragStart: () => {
               isDraggingRef.current = true;
               setCursor("grabbing");
+              beginDraftDrag();
             },
             onDraftPointDragEnd: () => {
               isDraggingRef.current = false;
               setCursor("crosshair");
+              endDraftDrag();
             },
             onSetCursor: setCursor,
           }}
@@ -290,81 +417,6 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
         />
       </Stage>
 
-      {/* Edit Mode Toggle & Toolbar */}
-      <MapEditorToolbar
-        isEditMode={poiInteractions.isEditMode}
-        onEditModeChange={poiInteractions.setIsEditMode}
-        activeTool={poiInteractions.activeTool}
-        onToolChange={poiInteractions.setActiveTool}
-        visible={!isMobile}
-      />
-
-      <AreaUi
-        mapId={mapData.id!}
-        areas={{
-          list: mapAreas,
-          editingId: editingAreaId,
-          editSnapshot: editingAreaSnapshot,
-          draftPoints: draftAreaPoints,
-          editPoints: editingPoints,
-        }}
-        undo={{
-          draft: draftUndoStack,
-          edit: editingUndoStack,
-        }}
-        ui={{
-          isEditMode: poiInteractions.isEditMode,
-          activeTool: poiInteractions.activeTool,
-          contextMenu: contextMenu,
-        }}
-        dialogs={{
-          createOpen: isAreaDialogOpen,
-          editOpen: isEditAreaDialogOpen,
-          deleteOpen: isDeleteDialogOpen,
-          deleteTargetId: deleteTargetAreaId,
-        }}
-        onDialogToggles={{
-          setCreateOpen: setIsAreaDialogOpen,
-          setEditOpen: setIsEditAreaDialogOpen,
-          setDeleteOpen: setIsDeleteDialogOpen,
-          setDeleteTargetId: setDeleteTargetAreaId,
-        }}
-        actions={{
-          onDraftFinish: handleDraftFinish,
-          onDraftUndo: handleDraftUndo,
-          onDraftCancel: handleDraftCancel,
-          onEditUndo: handleEditUndo,
-          onEditCancel: handleEditCancel,
-          onCloseContextMenu: closeContextMenu,
-          onStartEditingArea: startEditingArea,
-          onOpenEditInfo: openEditInfo,
-          onSetEditSnapshot: setEditingAreaSnapshot,
-          onRequestEditDialog: openEditDialogIfValid,
-          onCreateSuccess: applyDraftCreate,
-          onEditSuccess: applyEditResult,
-          onDeleteConfirm: handleDeleteArea,
-          onAreaCreated: addArea,
-          onAreaUpdated: updateArea,
-          onAreaDeleted: removeArea,
-          onResetDraft: resetDraft,
-          onResetEdit: cancelEditing,
-          onResetTool: () => poiInteractions.setActiveTool("select"),
-          onCloseDialogs: () => {
-            setIsEditAreaDialogOpen(false);
-            setIsDeleteDialogOpen(false);
-            setDeleteTargetAreaId(null);
-            closeContextMenu();
-          },
-        }}
-      />
-
-      <MapOverlayHints
-        isEditMode={poiInteractions.isEditMode}
-        activeTool={poiInteractions.activeTool}
-        isMobile={isMobile}
-        showZoomHint
-      />
-
       <PoiDialogs
         mapId={mapData.id!}
         categories={categories}
@@ -372,6 +424,54 @@ export default function MapViewer({ mapData, pois, categories, areas, readOnly =
         newPoiLocation={poiInteractions.newPoiLocation}
         onCloseNewPoi={() => poiInteractions.setNewPoiLocation(null)}
         onCloseEditPoi={() => poiInteractions.setActivePoi(null)}
+      />
+
+      <MapOverlays
+        isMobile={overlayIsMobile}
+        toolbar={toolbar}
+        hints={hints}
+        areaUi={areaUi}
+        layers={layers}
+        layerVisibility={layerVisibility}
+        imageVisible={imageVisible}
+        imageOpacity={imageOpacity}
+        onToggleLayerVisibility={toggleLayerVisibility}
+        onToggleImageVisibility={() => setImageVisible(!imageVisible)}
+        onImageOpacityChange={setImageOpacity}
+        onOpenLayerSidebar={() => setIsLayerSidebarOpen(true)}
+      />
+
+      <LayerSidebar
+        mapId={mapData.id!}
+        layers={layers}
+        areas={mapAreas}
+        isOpen={isLayerSidebarOpen}
+        onClose={() => setIsLayerSidebarOpen(false)}
+        onToggleLayerVisibility={toggleLayerVisibility}
+        onMoveAreaToLayer={handleMoveAreaToLayer}
+      />
+
+      <DraftToolSwitchDialog
+        open={isDraftGuardOpen}
+        onOpenChange={setIsDraftGuardOpen}
+        onKeepEditing={() => {
+          setPendingAction(null);
+          setIsDraftGuardOpen(false);
+          if (!poiInteractions.isEditMode) {
+            poiInteractions.setIsEditMode(true);
+          }
+          if (poiInteractions.activeTool !== "add_area") {
+            poiInteractions.setActiveTool("add_area");
+          }
+        }}
+        onDiscard={() => {
+          resetDraft();
+          if (pendingAction?.type === "tool") {
+            poiInteractions.setActiveTool(pendingAction.tool);
+          }
+          setPendingAction(null);
+          setIsDraftGuardOpen(false);
+        }}
       />
 
     </div>

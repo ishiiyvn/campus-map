@@ -7,51 +7,6 @@ import { mapSchema } from "@/lib/validators/map";
 import { stackServerApp, ensureProfile } from "@/stack/server";
 import slugify from "slugify";
 
-// ---------------------------
-// FETCH MAPS
-// ---------------------------
-
-
-// Fetch all maps (only owned by current user)
-export async function getMaps() {
-  try {
-    const user = await stackServerApp.getUser();
-    if (!user) return [];
-
-    return await db.select().from(maps).where(eq(maps.owner_id, user.id));
-  } catch (error) {
-    console.error("Error fetching maps:", error);
-    return [];
-  }
-}
-
-
-// Fetch a single map by ID (public access allowed)
-export async function getMapById(id: number) {
-  try {
-    const [map] = await db.select().from(maps).where(eq(maps.id, id));
-    return map;
-  } catch (error) {
-    console.error("Error fetching map by ID:", error);
-    return null;
-  }
-}
-
-// Fetch a single map by Slug (public access allowed)
-export async function getMapBySlug(slug: string) {
-  try {
-    const [map] = await db.select().from(maps).where(eq(maps.slug, slug));
-    return map;
-  } catch (error) {
-    console.error("Error fetching map by slug:", error);
-    return null;
-  }
-}
-
-// ---------------------------
-// CREATE / UPDATE / DELETE
-// ---------------------------
-
 export async function createMap(data: unknown) {
   try {
     const user = await stackServerApp.getUser();

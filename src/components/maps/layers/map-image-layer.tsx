@@ -7,13 +7,19 @@ interface MapImageLayerProps {
   src: string;
   width: number;
   height: number;
+  visible?: boolean;
+  opacity?: number;
 }
 
-export function MapImageLayer({ src, width, height }: MapImageLayerProps) {
-  const [image] = useImage(src);
+export function MapImageLayer({ src, width, height, visible = true, opacity = 1 }: MapImageLayerProps) {
+  const [image, status] = useImage(src, "anonymous");
+
+  if (status !== "loaded" || !image || !visible) {
+    return null;
+  }
 
   return (
-    <Layer>
+    <Layer opacity={opacity}>
       <KonvaImage image={image} width={width} height={height} listening={false} />
     </Layer>
   );

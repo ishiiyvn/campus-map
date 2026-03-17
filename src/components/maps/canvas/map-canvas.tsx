@@ -28,7 +28,12 @@ interface MapCanvasProps {
 }
 
 const URLImage = ({ src, width, height }: { src: string; width: number; height: number }) => {
-  const [image] = useImage(src);
+  const [image, status] = useImage(src, "anonymous");
+
+  if (status !== "loaded" || !image) {
+    return null;
+  }
+
   return <KonvaImage image={image} width={width} height={height} />;
 };
 

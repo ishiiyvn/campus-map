@@ -3,49 +3,7 @@
 import { db } from "@/index";
 import { areas } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
-import { areaSchema } from "@/lib/validators/area";
-
-// ---------------------------
-// FETCH AREAS
-// ---------------------------
-
-
-// Fetch all areas (admin overview)
-export async function getAreas() {
-  try {
-    return await db.select().from(areas);
-  } catch (error) {
-    console.error("Error fetching areas:", error);
-    throw error;
-  }
-}
-
-
-// Fetch areas by map (for map display)
-export async function getAreasByMapId(mapId: number) {
-  try {
-    return await db.select().from(areas).where(eq(areas.map_id, mapId)).orderBy(areas.name);
-  } catch (error) {
-    console.error("Error fetching areas by map:", error);
-    throw error;
-  }
-}
-
-
-// Fetch a single area by ID
-export async function getAreaById(id: number) {
-  try {
-    const area = await db.select().from(areas).where(eq(areas.id, id)).limit(1);
-    return area[0] || null;
-  } catch (error) {
-    console.error("Error fetching area by ID:", error);
-    throw error;
-  }
-}
-
-// ---------------------------
-// CREATE / UPDATE / DELETE
-// ---------------------------
+import { areaSchema, areaUpdateSchema } from "@/lib/validators/area";
 
 
 export async function createArea(data: unknown) {
@@ -78,7 +36,7 @@ export async function isAreaCodeAvailable(code: string) {
 
 export async function updateArea(id: number, data: unknown) {
   try {
-    const validatedData = areaSchema.parse(data);
+    const validatedData = areaUpdateSchema.parse(data);
     const [updatedArea] = await db
       .update(areas)
       .set(validatedData)

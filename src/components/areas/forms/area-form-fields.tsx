@@ -7,13 +7,29 @@ import { AreaInput } from "@/lib/validators";
 import { isAreaCodeAvailable } from "@/server/actions/areas";
 import slugify from "slugify";
 import { useEffect, useRef, useState } from "react";
+import { Category } from "@/server/db/schema";
+import { Layer } from "@/server/db/schema";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface AreaFormFieldsProps {
+  form: UseFormReturn<AreaInput>;
+  initialCode?: string;
+  categories?: Category[];
+  layers?: Layer[];
+}
 
 interface AreaFormFieldsProps {
   form: UseFormReturn<AreaInput>;
   initialCode?: string;
 }
 
-export default function AreaFormFields({ form, initialCode }: AreaFormFieldsProps) {
+export default function AreaFormFields({ form, initialCode, categories = [], layers = [] }: AreaFormFieldsProps) {
   const [codeTouched, setCodeTouched] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -141,6 +157,68 @@ export default function AreaFormFields({ form, initialCode }: AreaFormFieldsProp
           </FormItem>
         )}
       />
+
+      {/* Layer Selection */}
+      {layers.length > 0 && (
+        <FormField
+          control={form.control}
+          name="layer_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Capa:</FormLabel>
+              <FormControl>
+                <Select
+                  value={field.value?.toString() || ""}
+                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una capa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {layers.map((layer) => (
+                      <SelectItem key={layer.id} value={layer.id.toString()}>
+                        {layer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* Category Selection */}
+      {categories.length > 0 && (
+        <FormField
+          control={form.control}
+          name="category_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Categoría:</FormLabel>
+              <FormControl>
+                <Select
+                  value={field.value?.toString() || ""}
+                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
     </>
   );
 }
