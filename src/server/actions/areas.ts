@@ -60,3 +60,18 @@ export async function deleteArea(id: number) {
     throw error;
   }
 }
+
+export async function reorderAreasInLayer(layerId: number, orderedAreaIds: number[]) {
+  try {
+    for (let i = 0; i < orderedAreaIds.length; i++) {
+      await db
+        .update(areas)
+        .set({ display_order: i })
+        .where(eq(areas.id, orderedAreaIds[i]));
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering areas:", error);
+    throw error;
+  }
+}

@@ -3,7 +3,7 @@
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
-import { Area, Category, Layer } from "@/server/db/schema";
+import { Area, Layer } from "@/server/db/schema";
 import { updateArea, deleteArea } from "@/server/actions/areas";
 import { AreaInput, areaSchema } from "@/lib/validators";
 import { useForm } from "react-hook-form";
@@ -13,13 +13,13 @@ import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import AreaFormFields from "./area-form-fields";
 import { isAreaCodeAvailable } from "@/server/actions/areas";
+import { LevelManagement } from "@/components/areas/level-management";
 
 interface EditAreaFormProps {
   area: Area;
   polygonCoordinates?: { x: number; y: number }[];
   onSuccess?: (updated: Area) => void;
   refreshOnSuccess?: boolean;
-  categories?: Category[];
   layers?: Layer[];
 }
 
@@ -30,7 +30,6 @@ export default function EditAreaForm({
   polygonCoordinates,
   onSuccess,
   refreshOnSuccess = true,
-  categories = [],
   layers = [],
 }: EditAreaFormProps) {
   const router = useRouter();
@@ -43,7 +42,6 @@ export default function EditAreaForm({
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
-      category_id: area.category_id ?? undefined,
       layer_id: area.layer_id ?? undefined,
       polygon_coordinates: polygonCoordinates ?? ((area.polygon_coordinates as PolygonCoordinate[]) || []),
     },
@@ -55,7 +53,6 @@ export default function EditAreaForm({
       code: area.code,
       description: area.description || "",
       map_id: area.map_id,
-      category_id: area.category_id ?? undefined,
       layer_id: area.layer_id ?? undefined,
       polygon_coordinates: polygonCoordinates ?? (area.polygon_coordinates as PolygonCoordinate[]),
     });
@@ -114,7 +111,9 @@ export default function EditAreaForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <AreaFormFields form={form} initialCode={area.code} categories={categories} layers={layers} />
+        <AreaFormFields form={form} initialCode={area.code} layers={layers} />
+        
+        <LevelManagement areaId={area.id!} />
         
         <div className="flex gap-2">
           <Button type="submit" className="flex-1" disabled={isLoading}>

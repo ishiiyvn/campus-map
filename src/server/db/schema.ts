@@ -13,8 +13,10 @@ export const categories = pgTable("categories", {
   description: varchar({ length: 1024 }).notNull(),
   color: varchar({ length: 7 }),
   icon: varchar({ length: 100 }),
+  display_type: varchar({ length: 10 }).notNull().default("icon"), // 'icon' | 'text'
   parent_category_id: integer().references((): AnyPgColumn => categories.id, { onDelete: "set null" }),
   is_active: boolean().notNull().default(true),
+  is_map_level_default: boolean().notNull().default(false),
   created_at: timestamp().defaultNow().notNull(),
 });
 
@@ -72,6 +74,23 @@ export const areas = pgTable("areas", {
 });
 
 export type Area = typeof areas.$inferSelect;
+
+export const levels = pgTable("levels", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  area_id: integer().notNull().references(() => areas.id, { onDelete: "cascade" }),
+  name: varchar({ length: 100 }).notNull(),
+  display_order: integer().notNull().default(0),
+  created_at: timestamp().defaultNow().notNull(),
+});
+
+export type Level = typeof levels.$inferSelect;
+
+export const poiLevels = pgTable("poi_levels", {
+  poi_id: integer().notNull().references(() => pointsOfInterest.id, { onDelete: "cascade" }),
+  level_id: integer().notNull().references(() => levels.id, { onDelete: "cascade" }),
+});
+
+export type PoiLevel = typeof poiLevels.$inferSelect;
 
 export const pointsOfInterest = pgTable("points_of_interest", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),

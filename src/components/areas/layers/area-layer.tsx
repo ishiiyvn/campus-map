@@ -9,10 +9,22 @@ interface AreaLayerProps {
     stroke: string;
   }[];
   hiddenAreaId?: number | null;
+  activeTool?: string;
   onAreaMenu: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onAreaClick?: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
-export function AreaLayer({ areas, hiddenAreaId, onAreaMenu }: AreaLayerProps) {
+export function AreaLayer({ areas, hiddenAreaId, activeTool, onAreaMenu, onAreaClick }: AreaLayerProps) {
+  const handleClick = (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => {
+    if (activeTool === "add_poi" && onAreaClick) {
+      onAreaClick(areaId, event);
+      return;
+    }
+    if (activeTool === "select" || activeTool === undefined) {
+      onAreaMenu(areaId, event);
+    }
+  };
+
   return (
     <>
       {areas
@@ -25,7 +37,7 @@ export function AreaLayer({ areas, hiddenAreaId, onAreaMenu }: AreaLayerProps) {
             fill={area.fill}
             stroke={area.stroke}
             strokeWidth={2}
-            onClick={(event) => onAreaMenu(area.id, event)}
+            onClick={(event) => handleClick(area.id, event)}
             onContextMenu={(event) => onAreaMenu(area.id, event)}
           />
         ))}

@@ -1,3 +1,9 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { Pentagon, Pencil, Trash2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 interface AreaContextMenuProps {
   x: number;
   y: number;
@@ -15,34 +21,61 @@ export function AreaContextMenu({
   onDelete,
   onClose,
 }: AreaContextMenuProps) {
+  const t = useTranslations("areas");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onClose]);
+
   return (
     <div
-      className="absolute z-20 bg-white/95 border border-slate-200 rounded shadow-md px-2 py-1 text-sm"
-      style={{ left: x, top: y }}
+      ref={menuRef}
+      className="fixed z-[100] bg-background border rounded-lg shadow-lg py-1 min-w-[180px]"
+      style={{
+        left: x,
+        top: y,
+      }}
     >
       <button
-        className="block w-full text-left px-2 py-1 hover:bg-slate-100"
-        onClick={onEditPolygon}
+        onClick={() => {
+          onEditPolygon();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
       >
-        Editar polígono
+        <Pentagon className="h-4 w-4" />
+        {t("menu.editPolygon")}
       </button>
       <button
-        className="block w-full text-left px-2 py-1 hover:bg-slate-100"
-        onClick={onEditInfo}
+        onClick={() => {
+          onEditInfo();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
       >
-        Editar información
+        <Pencil className="h-4 w-4" />
+        {t("menu.editInfo")}
       </button>
+      <div className="h-px bg-border my-1" />
       <button
-        className="block w-full text-left px-2 py-1 hover:bg-slate-100 text-red-600"
-        onClick={onDelete}
+        onClick={() => {
+          onDelete();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors"
       >
-        Eliminar área
-      </button>
-      <button
-        className="block w-full text-left px-2 py-1 hover:bg-slate-100"
-        onClick={onClose}
-      >
-        Cancelar
+        <Trash2 className="h-4 w-4" />
+        {t("menu.delete")}
       </button>
     </div>
   );

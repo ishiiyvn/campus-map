@@ -1,13 +1,19 @@
-import AddCategoryForm from "@/components/categories/forms/add-category-form";
+import { getCategories } from "@/server/queries/categories";
+import { CategoriesList } from "@/components/categories/categories-list";
+import { AddCategoryButton } from "@/components/categories/buttons/add-category-button";
+import { getTranslations } from "next-intl/server";
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  const categories = await getCategories();
+  const t = await getTranslations("sidebar");
+
   return (
     <div className="container mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold mb-6">Manage Categories</h1>
-      <div className="bg-white p-6 rounded-lg shadow max-w-md">
-        <h2 className="text-xl mb-4">Add New Category</h2>
-        <AddCategoryForm />
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">{t("categories")}</h1>
+        <AddCategoryButton />
       </div>
+      <CategoriesList categories={categories || []} />
     </div>
   );
 }

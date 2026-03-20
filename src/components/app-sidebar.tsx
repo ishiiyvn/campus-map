@@ -10,16 +10,21 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuAction,
 } from "@/components/ui/sidebar"
-import { LayoutGrid, Map, Layers, LogIn } from "lucide-react"
+import { LayoutGrid, Map, Layers, LogIn, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { routeWithLocale } from "@/i18n/routes"
 import { UserButton, useUser } from "@stackframe/stack"
 import { useTranslations } from "next-intl"
+import { useSidebar } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 
 export function AppSidebar() {
   const user = useUser();
   const t = useTranslations("sidebar");
+  const { state, toggleSidebar } = useSidebar();
+  
   const items = [
     {
       title: t("maps"),
@@ -46,9 +51,23 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-4 py-2">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
             <Map className="h-6 w-6" />
             <span className="font-bold">{t("brand")}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={toggleSidebar}
+          >
+            {state === "expanded" ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </SidebarHeader>
       <SidebarContent>

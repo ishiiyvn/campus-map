@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getMapBySlug } from "@/server/queries/maps";
-import { getPointsOfInterest } from "@/server/queries/pois";
+import { getPoisByMap } from "@/server/queries/pois";
 import { getCategories } from "@/server/queries/categories";
 import { getAreasByMapId } from "@/server/queries/areas";
 import { getLayers } from "@/server/queries/layers";
@@ -35,7 +35,7 @@ export default async function PublicMapPage({ params }: PublicMapPageProps) {
     notFound();
   }
 
-  const pois = await getPointsOfInterest(); // TODO: Filter by map.id
+  const pois = await getPoisByMap(map.id);
   const categories = await getCategories();
   const areas = await getAreasByMapId(map.id);
   const layers = await getLayers(map.id);

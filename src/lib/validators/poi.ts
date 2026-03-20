@@ -14,7 +14,7 @@ export const pointOfInterestSchema = z.object({
   icon_color: z.string().nullable().optional(),
   is_visible: z.boolean().default(true).optional(),
   display_order: z.number().int().default(0).optional(),
-  //  properties: poiPropertiesSchema.optional(),
+  level_ids: z.array(z.number()).optional(),
   is_active: z.boolean().default(true).optional(),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),

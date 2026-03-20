@@ -7,7 +7,6 @@ import { AreaInput } from "@/lib/validators";
 import { isAreaCodeAvailable } from "@/server/actions/areas";
 import slugify from "slugify";
 import { useEffect, useRef, useState } from "react";
-import { Category } from "@/server/db/schema";
 import { Layer } from "@/server/db/schema";
 import {
   Select,
@@ -20,16 +19,10 @@ import {
 interface AreaFormFieldsProps {
   form: UseFormReturn<AreaInput>;
   initialCode?: string;
-  categories?: Category[];
   layers?: Layer[];
 }
 
-interface AreaFormFieldsProps {
-  form: UseFormReturn<AreaInput>;
-  initialCode?: string;
-}
-
-export default function AreaFormFields({ form, initialCode, categories = [], layers = [] }: AreaFormFieldsProps) {
+export default function AreaFormFields({ form, initialCode, layers = [] }: AreaFormFieldsProps) {
   const [codeTouched, setCodeTouched] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -178,37 +171,6 @@ export default function AreaFormFields({ form, initialCode, categories = [], lay
                     {layers.map((layer) => (
                       <SelectItem key={layer.id} value={layer.id.toString()}>
                         {layer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
-      {/* Category Selection */}
-      {categories.length > 0 && (
-        <FormField
-          control={form.control}
-          name="category_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoría:</FormLabel>
-              <FormControl>
-                <Select
-                  value={field.value?.toString() || ""}
-                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id.toString()}>
-                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

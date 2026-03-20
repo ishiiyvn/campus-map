@@ -2,13 +2,17 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AddPoiForm from "@/components/pois/forms/add-poi-form";
-import { Category } from "@/server/db/schema";
+import { Category, Area, Level } from "@/server/db/schema";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { getLevelsByArea } from "@/server/actions/levels";
 
 interface AddPoiDialogProps {
   open: boolean;
-  location: { x: number; y: number } | null;
+  location: { x: number; y: number; areaId: number | null } | null;
   mapId: number;
   categories: Category[];
+  areas: Area[];
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -18,25 +22,38 @@ export function AddPoiDialog({
   location,
   mapId,
   categories,
+  areas,
   onClose,
   onSuccess,
 }: AddPoiDialogProps) {
-  const handleSuccess = () => {
-    onSuccess?.();
-    onClose();
-  };
+  const t = useTranslations("poi");
+  const [levels, setLevels] = useState<Level[]>([]);
+
+  useEffect(() => {
+    if (location?.areaId) {
+      getLevelsByArea(location.areaId)
+        .then(setLevels)
+        .catch(console.error);
+    } else {
+      setLevels([]);
+    }
+  }, [location]);
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Marker</DialogTitle>
+          <DialogTitle>{t("addTitle")}</DialogTitle>
         </DialogHeader>
         {location && (
           <AddPoiForm
             mapId={mapId}
             categories={categories}
-            defaultCoordinates={location}
-            onSuccess={handleSuccess}
+            areas={areas}
+            areaId={location.areaId}
+            levels={levels}
+            defaultCoordinates={{ x: location.x, y: location.y }}
+            onSuccess={onSuccess}
           />
         )}
       </DialogContent>

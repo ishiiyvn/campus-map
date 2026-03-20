@@ -47,3 +47,33 @@ export async function deleteLayer(id: number) {
     throw error;
   }
 }
+
+export async function reorderLayers(orderedIds: number[]) {
+  try {
+    // Get current layers ordered by display_order (original positions)
+    const currentLayers = await db
+      .select({ id: layers.id, display_order: layers.display_order })
+      .from(layers)
+      .orderBy(layers.display_order);
+
+    // Create a map of id -> display_order for quick lookup
+    const idToDisplayOrder = new Map(currentLayers.map(l => [l.id, l.display_order]));
+
+    // Update each layer: assign the display_order of whatever was at that position originally
+    for (let i = 0; i < orderedIds.length; i++) {
+      const layerId = orderedIds[i];
+      // The layer at position i gets the display_order of what was originally at position i
+      const originalLayer = currentLayers[i];
+      if (originalLayer) {
+        await db
+          .update(layers)
+          .set({ display_order: originalLayer.display_order })
+          .where(eq(layers.id, layerId));
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error reordering layers:", error);
+    throw error;
+  }
+}

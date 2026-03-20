@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { stackServerApp } from "@/stack/server";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppTopbar } from "@/components/app-topbar";
 import { withDefaultLocale } from "@/i18n/redirects";
 
 interface ProtectedLayoutProps {
@@ -16,14 +15,11 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   }
 
   return (
-    <SidebarProvider defaultOpen>
-      <Suspense fallback={<div className="hidden md:block" style={{ width: "var(--sidebar-width)" }} />}>
-        <AppSidebar />
-      </Suspense>
-      <SidebarInset>
-        <SidebarTrigger />
+    <div className="min-h-svh flex flex-col">
+      <AppTopbar />
+      <main className="flex-1">
         {children}
-      </SidebarInset>
-    </SidebarProvider>
+      </main>
+    </div>
   );
 }

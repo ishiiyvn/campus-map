@@ -1,4 +1,7 @@
 {
+  "maps": {
+    "reset": "Restablecer"
+  },
   "sidebar": {
     "brand": "Campus Map",
     "maps": "Mapas",
@@ -27,6 +30,15 @@
       "description": "Tienes un borrador de área en progreso. ¿Quieres descartarlo o seguir editando?",
       "keep": "Seguir editando",
       "discard": "Descartar"
+    },
+    "menu": {
+      "editPolygon": "Editar polígono",
+      "editInfo": "Editar información",
+      "delete": "Eliminar área",
+      "deleteConfirm": "¿Estás seguro de que quieres eliminar esta área?"
+    },
+    "addForm": {
+      "levelsHint": "Los niveles se podrán agregar después de crear el área."
     }
   },
   "map": {
@@ -35,6 +47,62 @@
       "addArea": "Añadir área: Haz clic para agregar puntos • Arrastra para mover",
       "select": "Seleccionar: Haz clic en un área • Clic derecho para opciones",
       "mobileZoom": "Pinza para acercar • Arrastra con dos dedos para mover"
-    }
+    },
+    "reset": "Restablecer"
+  },
+  "categories": {
+    "add": "Añadir categoría",
+    "addTitle": "Añadir nueva categoría",
+    "editTitle": "Editar categoría",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar esta categoría?",
+    "name": "Nombre",
+    "namePlaceholder": "Nombre de la categoría",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Descripción de la categoría",
+    "displayType": "Tipo de visualización",
+    "displayTypePlaceholder": "Seleccionar tipo de visualización",
+    "displayTypeIcon": "Icono (muestra icono en el mapa)",
+    "displayTypeText": "Texto (muestra nombre en el mapa)",
+    "icon": "Icono",
+    "selectIcon": "Seleccionar un icono",
+    "color": "Color",
+    "mapLevelDefault": "Visible por defecto en el mapa",
+    "save": "Guardar",
+    "createSuccess": "Categoría creada exitosamente",
+    "createError": "Error al crear la categoría",
+    "updateSuccess": "Categoría actualizada exitosamente",
+    "updateError": "Error al actualizar la categoría",
+    "deleteSuccess": "Categoría eliminada exitosamente",
+    "deleteError": "Error al eliminar la categoría"
+  },
+  "poi": {
+    "edit": "Editar",
+    "reposition": "Reposicionar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Estás seguro de que quieres eliminar este punto de interés?",
+    "deleteSuccess": "Punto de interés eliminado exitosamente",
+    "deleteError": "Error al eliminar el punto de interés",
+    "addTitle": "Añadir nuevo punto de interés",
+    "editTitle": "Editar punto de interés",
+    "name": "Nombre",
+    "namePlaceholder": "Nombre del punto de interés",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Descripción del punto de interés",
+    "category": "Categoría",
+    "selectCategory": "Seleccionar categoría",
+    "area": "Área",
+    "selectArea": "Seleccionar área",
+    "icon": "Icono",
+    "selectIcon": "Seleccionar icono",
+    "color": "Color",
+    "levels": "Niveles",
+    "reset": "Restablecer",
+    "customized": "personalizado",
+    "save": "Guardar",
+    "add": "Añadir",
+    "createSuccess": "Punto de interés creado exitosamente",
+    "createError": "Error al crear el punto de interés",
+    "updateSuccess": "Punto de interés actualizado exitosamente",
+    "updateError": "Error al actualizar el punto de interés"
   }
 }

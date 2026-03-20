@@ -5,20 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { createArea } from "@/server/actions/areas";
 import { AreaInput, areaSchema } from "@/lib/validators";
-import { Area, Category, Layer } from "@/server/db/schema";
+import { Area, Layer } from "@/server/db/schema";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import AreaFormFields from "./area-form-fields";
+import { LevelManagement } from "@/components/areas/level-management";
+import { useTranslations } from "next-intl";
 
 interface AddAreaFormProps {
   mapId: number;
   polygonCoordinates?: { x: number; y: number }[];
   onSuccess?: (area: Area) => void;
   refreshOnSuccess?: boolean;
-  categories?: Category[];
   layers?: Layer[];
 }
 
@@ -27,11 +28,12 @@ export default function AddAreaForm({
   polygonCoordinates = [], 
   onSuccess,
   refreshOnSuccess = true,
-  categories = [],
   layers = [],
 }: AddAreaFormProps) {
+  const t = useTranslations("areas");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [createdArea, setCreatedArea] = useState<Area | null>(null);
 
   const form = useForm<AreaInput>({
     resolver: zodResolver(areaSchema),
@@ -58,7 +60,7 @@ export default function AddAreaForm({
         polygon_coordinates: polygonCoordinates,
       });
       toast.success("Area created successfully");
-      form.reset();
+      setCreatedArea(newArea as Area);
       onSuccess?.(newArea as Area);
       if (refreshOnSuccess) {
         router.refresh();
@@ -81,10 +83,19 @@ export default function AddAreaForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <AreaFormFields form={form} categories={categories} layers={layers} />
+        <AreaFormFields form={form} layers={layers} />
+        
+        {createdArea ? (
+          <LevelManagement areaId={createdArea.id!} />
+        ) : (
+          <p className="text-xs text-muted-foreground/70">
+            {t("addForm.levelsHint")}
+          </p>
+        )}
+        
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Add Area
+          {createdArea ? "Área creada" : "Crear área"}
         </Button>
 
         {/* Hidden fields for required data */}

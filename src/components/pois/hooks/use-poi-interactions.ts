@@ -1,11 +1,14 @@
 import { useCallback, useState } from "react";
 import Konva from "konva";
-import { PointOfInterest } from "@/server/db/schema";
+import { PointOfInterest, Area } from "@/server/db/schema";
 import { EditorTool } from "@/components/maps/editor-tools/map-editor-toolbar";
+import { findAreaContainingPoint } from "@/lib/point-utils";
 
 interface UsePoiInteractionsOptions {
   onViewPoi?: (poi: PointOfInterest) => void;
   onAreaPointAdd?: (point: { x: number; y: number }) => void;
+  onPoiEdit?: (poi: PointOfInterest) => void;
+  areas?: Area[];
 }
 
 export function usePoiInteractions(
@@ -15,8 +18,9 @@ export function usePoiInteractions(
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
-  const [newPoiLocation, setNewPoiLocation] = useState<{ x: number; y: number } | null>(null);
+  const [newPoiLocation, setNewPoiLocation] = useState<{ x: number; y: number; areaId: number | null } | null>(null);
   const [activePoi, setActivePoi] = useState<PointOfInterest | null>(null);
+  const [activePoiForEdit, setActivePoiForEdit] = useState<PointOfInterest | null>(null);
 
   const resetToolToSelect = useCallback(() => {
     setActiveTool("select");
@@ -44,7 +48,8 @@ export function usePoiInteractions(
       const mapPoint = transformPointerToMap(pointer);
       if (!mapPoint) return;
       if (activeTool === "add_poi") {
-        setNewPoiLocation({ x: mapPoint.x, y: mapPoint.y });
+        const area = options?.areas ? findAreaContainingPoint(mapPoint.x, mapPoint.y, options.areas) : null;
+        setNewPoiLocation({ x: mapPoint.x, y: mapPoint.y, areaId: area?.id ?? null });
         resetToolToSelect();
       }
       if (activeTool === "add_area") {
@@ -54,17 +59,7 @@ export function usePoiInteractions(
     [activeTool, isEditMode, options, resetToolToSelect, transformPointerToMap],
   );
 
-  const handlePoiClick = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>, poi: PointOfInterest) => {
-      e.cancelBubble = true;
-      if (isEditMode && activeTool === "select") {
-        setActivePoi(poi);
-        return;
-      }
-      options?.onViewPoi?.(poi);
-    },
-    [activeTool, isEditMode, options],
-  );
+
 
   const handlePoiMouseEnter = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -93,8 +88,9 @@ export function usePoiInteractions(
     setNewPoiLocation,
     activePoi,
     setActivePoi,
+    activePoiForEdit,
+    setActivePoiForEdit,
     handleStageClick,
-    handlePoiClick,
     handlePoiMouseEnter,
     handlePoiMouseLeave,
   };

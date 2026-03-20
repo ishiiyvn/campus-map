@@ -11,7 +11,6 @@ import type { Layer as LayerType } from "@/server/db/schema";
 interface AreaRenderData {
   id: number;
   layer_id: number | null;
-  category_id: number | null;
   points: number[];
   fill: string;
   stroke: string;
@@ -34,6 +33,7 @@ interface AreasLayersGroupProps {
   };
   handlers: {
     onAreaMenu: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+    onAreaClick: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
     onEditGroupDragStart: () => void;
     onEditGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
     onEditInsertPoint: (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
@@ -57,6 +57,7 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
   const { isEditMode, activeTool } = flags;
   const {
     onAreaMenu,
+    onAreaClick,
     onEditGroupDragStart,
     onEditGroupDragEnd,
     onEditInsertPoint,
@@ -106,7 +107,9 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
             <AreaLayer
               areas={layerAreas}
               hiddenAreaId={editingAreaId}
+              activeTool={activeTool}
               onAreaMenu={onAreaMenu}
+              onAreaClick={onAreaClick}
             />
           </Layer>
         );
@@ -117,7 +120,9 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
           <AreaLayer
             areas={areasByLayer["unassigned"]}
             hiddenAreaId={editingAreaId}
+            activeTool={activeTool}
             onAreaMenu={onAreaMenu}
+            onAreaClick={onAreaClick}
           />
         </Layer>
       )}

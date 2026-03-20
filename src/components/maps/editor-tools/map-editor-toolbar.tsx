@@ -50,7 +50,7 @@ export function MapEditorToolbar({
   const t = useTranslations("toolbar");
 
   return (
-    <div className={cn("fixed top-4 right-4 flex flex-col gap-4 items-end z-40", className)}>
+    <div className={cn("absolute top-4 right-4 flex flex-col gap-4 items-end z-50", className)}>
       {/* Edit Mode Toggle */}
       <div className="bg-white/90 backdrop-blur shadow-md px-3 py-2 rounded-lg flex items-center gap-2">
         <Switch
