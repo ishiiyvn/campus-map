@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Area } from "@/server/db/schema";
 import type { AreaPoint } from "@/components/areas/utils/types";
 import type { AreaUiProps } from "@/components/areas/overlays/area-ui";
@@ -10,6 +11,7 @@ interface UseMapOverlaysPropsOptions {
   activeTool: EditorTool;
   onEditModeChange: (enabled: boolean) => void;
   onToolChange: (tool: EditorTool) => void;
+  sidebarCollapsed?: boolean;
   mapAreas: Area[];
   editingAreaId: number | null;
   editingAreaSnapshot: Area | null;
@@ -17,7 +19,6 @@ interface UseMapOverlaysPropsOptions {
   editPoints: AreaPoint[];
   draftUndoStack: AreaPoint[][];
   editingUndoStack: AreaPoint[][];
-  contextMenu: { x: number; y: number; areaId: number } | null;
   isCreateOpen: boolean;
   isEditOpen: boolean;
   isDeleteOpen: boolean;
@@ -31,7 +32,6 @@ interface UseMapOverlaysPropsOptions {
   onDraftCancel: () => void;
   onEditUndo: () => void;
   onEditCancel: () => void;
-  onCloseContextMenu: () => void;
   onStartEditingArea: (area: Area) => void;
   onOpenEditInfo: (area: Area) => void;
   onSetEditSnapshot: (area: Area) => void;
@@ -55,6 +55,7 @@ export function useMapOverlaysProps({
   activeTool,
   onEditModeChange,
   onToolChange,
+  sidebarCollapsed,
   mapAreas,
   editingAreaId,
   editingAreaSnapshot,
@@ -62,7 +63,6 @@ export function useMapOverlaysProps({
   editPoints,
   draftUndoStack,
   editingUndoStack,
-  contextMenu,
   isCreateOpen,
   isEditOpen,
   isDeleteOpen,
@@ -76,7 +76,6 @@ export function useMapOverlaysProps({
   onDraftCancel,
   onEditUndo,
   onEditCancel,
-  onCloseContextMenu,
   onStartEditingArea,
   onOpenEditInfo,
   onSetEditSnapshot,
@@ -92,20 +91,21 @@ export function useMapOverlaysProps({
   onResetTool,
   onCloseDialogs,
 }: UseMapOverlaysPropsOptions) {
-  const toolbar = {
+  const toolbar = useMemo(() => ({
     isEditMode,
     activeTool,
     onEditModeChange,
     onToolChange,
-  };
+  }), [isEditMode, activeTool, onEditModeChange, onToolChange]);
 
-  const hints = {
+  const hints = useMemo(() => ({
     isEditMode,
     activeTool,
     isMobile,
-  };
+    sidebarCollapsed,
+  }), [isEditMode, activeTool, isMobile, sidebarCollapsed]);
 
-  const areaUi: AreaUiProps = {
+  const areaUi = useMemo((): AreaUiProps => ({
     mapId,
     areas: {
       list: mapAreas,
@@ -121,7 +121,6 @@ export function useMapOverlaysProps({
     ui: {
       isEditMode,
       activeTool,
-      contextMenu,
     },
     dialogs: {
       createOpen: isCreateOpen,
@@ -141,7 +140,6 @@ export function useMapOverlaysProps({
       onDraftCancel,
       onEditUndo,
       onEditCancel,
-      onCloseContextMenu,
       onStartEditingArea,
       onOpenEditInfo,
       onSetEditSnapshot,
@@ -157,12 +155,22 @@ export function useMapOverlaysProps({
       onResetTool,
       onCloseDialogs,
     },
-  };
+  }), [
+    mapId, mapAreas, editingAreaId, editingAreaSnapshot, draftPoints, editPoints,
+    draftUndoStack, editingUndoStack, isEditMode, activeTool,
+    isCreateOpen, isEditOpen, isDeleteOpen, deleteTargetId,
+    setCreateOpen, setEditOpen, setDeleteOpen, setDeleteTargetId,
+    onDraftFinish, onDraftUndo, onDraftCancel, onEditUndo, onEditCancel,
+    onStartEditingArea, onOpenEditInfo, onSetEditSnapshot,
+    onRequestEditDialog, onCreateSuccess, onEditSuccess, onDeleteConfirm,
+    onAreaCreated, onAreaUpdated, onAreaDeleted, onResetDraft, onResetEdit,
+    onResetTool, onCloseDialogs,
+  ]);
 
-  return {
+  return useMemo(() => ({
     isMobile,
     toolbar,
     hints,
     areaUi,
-  };
+  }), [isMobile, toolbar, hints, areaUi]);
 }

@@ -2,9 +2,7 @@
 
 import type { Area } from "@/server/db/schema";
 import type { AreaPoint } from "@/components/areas/utils/types";
-import type { AreaContextMenuState } from "@/components/areas/overlays/types";
 import { AreaControlsOverlay } from "@/components/areas/overlays/area-controls-overlay";
-import { AreaContextMenuOverlay } from "@/components/areas/overlays/area-context-menu-overlay";
 import { AreaDialogsOverlay } from "@/components/areas/overlays/area-dialogs-overlay";
 
 export interface AreaUiProps {
@@ -23,7 +21,6 @@ export interface AreaUiProps {
   ui: {
     isEditMode: boolean;
     activeTool: string;
-    contextMenu: AreaContextMenuState | null;
   };
   dialogs: {
     createOpen: boolean;
@@ -43,7 +40,6 @@ export interface AreaUiProps {
     onDraftCancel: () => void;
     onEditUndo: () => void;
     onEditCancel: () => void;
-    onCloseContextMenu: () => void;
     onStartEditingArea: (area: Area) => void;
     onOpenEditInfo: (area: Area) => void;
     onSetEditSnapshot: (area: Area) => void;
@@ -86,7 +82,7 @@ export interface AreaUiProps {
 export function AreaUi({ mapId, areas, undo, ui, dialogs, onDialogToggles, actions }: AreaUiProps) {
   const { list, editingId, editSnapshot, draftPoints, editPoints } = areas;
   const { draft: draftUndoStack, edit: editingUndoStack } = undo;
-  const { contextMenu, isEditMode, activeTool } = ui;
+  const { isEditMode, activeTool } = ui;
   const { createOpen, editOpen, deleteOpen, deleteTargetId } = dialogs;
   const { setCreateOpen, setEditOpen, setDeleteOpen, setDeleteTargetId } = onDialogToggles;
   return (
@@ -108,18 +104,6 @@ export function AreaUi({ mapId, areas, undo, ui, dialogs, onDialogToggles, actio
         onSetEditSnapshot={actions.onSetEditSnapshot}
         onRequestEditDialog={actions.onRequestEditDialog}
         onOpenEditDialog={() => setEditOpen(true)}
-      />
-
-      <AreaContextMenuOverlay
-        isEditMode={isEditMode}
-        editingId={editingId}
-        contextMenu={contextMenu}
-        mapAreas={list}
-        onCloseContextMenu={actions.onCloseContextMenu}
-        onStartEditingArea={actions.onStartEditingArea}
-        onOpenEditInfo={actions.onOpenEditInfo}
-        onDeleteTargetChange={setDeleteTargetId}
-        onDeleteOpenChange={setDeleteOpen}
       />
 
       <AreaDialogsOverlay

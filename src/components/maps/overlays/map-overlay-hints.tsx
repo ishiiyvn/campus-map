@@ -2,12 +2,14 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 interface MapOverlayHintsProps {
   isEditMode: boolean;
   activeTool: string;
   isMobile?: boolean;
   showZoomHint?: boolean;
+  sidebarCollapsed?: boolean;
 }
 
 export function MapOverlayHints({
@@ -15,6 +17,7 @@ export function MapOverlayHints({
   activeTool,
   isMobile = false,
   showZoomHint = true,
+  sidebarCollapsed = true,
 }: MapOverlayHintsProps) {
   const t = useTranslations("map.hints");
 
@@ -39,10 +42,11 @@ export function MapOverlayHints({
     return next;
   }, [activeTool, isEditMode, isMobile, showZoomHint, t]);
 
-  if (hints.length === 0) return null;
-
   return (
-    <div className="fixed bottom-4 right-6 sm:bottom-6 sm:right-8 flex flex-col gap-2 text-xs pointer-events-none z-40">
+    <div className={cn(
+      "fixed bottom-4 flex flex-col gap-2 text-xs pointer-events-none z-40",
+      sidebarCollapsed ? "left-4" : "left-[19.5rem]"
+    )}>
       {hints.map((hint, index) => (
         <div
           key={`${hint}-${index}`}

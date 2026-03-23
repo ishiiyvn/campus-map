@@ -1,46 +1,88 @@
+import { memo } from "react";
 import { Line } from "react-konva";
 import Konva from "konva";
 
+interface AreaItem {
+  id: number;
+  points: number[];
+  fill: string;
+  stroke: string;
+}
+
 interface AreaLayerProps {
-  areas: {
-    id: number;
-    points: number[];
-    fill: string;
-    stroke: string;
-  }[];
+  areas: AreaItem[];
   hiddenAreaId?: number | null;
+  isEditMode?: boolean;
   activeTool?: string;
-  onAreaMenu: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+  onAreaContextMenu: (areaId: number, screenPos: { x: number; y: number }) => void;
   onAreaClick?: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
-export function AreaLayer({ areas, hiddenAreaId, activeTool, onAreaMenu, onAreaClick }: AreaLayerProps) {
-  const handleClick = (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => {
+function AreaLine({
+  area,
+  isEditMode,
+  activeTool,
+  onAreaContextMenu,
+  onAreaClick,
+}: {
+  area: AreaItem;
+  isEditMode?: boolean;
+  activeTool?: string;
+  onAreaContextMenu: (areaId: number, screenPos: { x: number; y: number }) => void;
+  onAreaClick?: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+}) {
+  const handleClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!isEditMode) return;
     if (activeTool === "add_poi" && onAreaClick) {
-      onAreaClick(areaId, event);
+      onAreaClick(area.id, e);
       return;
     }
-    if (activeTool === "select" || activeTool === undefined) {
-      onAreaMenu(areaId, event);
-    }
+    e.cancelBubble = true;
+    onAreaContextMenu(area.id, { x: e.evt.clientX, y: e.evt.clientY });
   };
 
+  const handleContextMenu = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!isEditMode) return;
+    e.cancelBubble = true;
+    e.evt.preventDefault();
+    onAreaContextMenu(area.id, { x: e.evt.clientX, y: e.evt.clientY });
+  };
+
+  return (
+    <Line
+      points={area.points}
+      closed
+      fill={area.fill}
+      stroke={area.stroke}
+      strokeWidth={2}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+    />
+  );
+}
+
+export const AreaLayer = memo(function AreaLayer({
+  areas,
+  hiddenAreaId,
+  isEditMode,
+  activeTool,
+  onAreaContextMenu,
+  onAreaClick,
+}: AreaLayerProps) {
   return (
     <>
       {areas
         .filter((area) => area.id !== hiddenAreaId)
         .map((area) => (
-          <Line
+          <AreaLine
             key={area.id}
-            points={area.points}
-            closed
-            fill={area.fill}
-            stroke={area.stroke}
-            strokeWidth={2}
-            onClick={(event) => handleClick(area.id, event)}
-            onContextMenu={(event) => onAreaMenu(area.id, event)}
+            area={area}
+            isEditMode={isEditMode}
+            activeTool={activeTool}
+            onAreaContextMenu={onAreaContextMenu}
+            onAreaClick={onAreaClick}
           />
         ))}
     </>
   );
-}
+});

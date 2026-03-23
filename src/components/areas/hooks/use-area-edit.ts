@@ -13,7 +13,6 @@ export function useAreaEdit() {
   const [editingUndoStack, setEditingUndoStack] = useState<AreaPoint[][]>([]);
   const [isEditAreaDialogOpen, setIsEditAreaDialogOpen] = useState(false);
   const [editingAreaSnapshot, setEditingAreaSnapshot] = useState<Area | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; areaId: number } | null>(null);
   const isEditingDragRef = useRef(false);
 
   const isEditing = editingAreaId !== null;
@@ -31,14 +30,6 @@ export function useAreaEdit() {
     setEditingPoints(points.map((point) => ({ x: point.x, y: point.y })));
     setEditingAreaSnapshot(area);
     setIsEditAreaDialogOpen(true);
-  }, []);
-
-  const openContextMenu = useCallback((areaId: number, x: number, y: number) => {
-    setContextMenu({ areaId, x, y });
-  }, []);
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null);
   }, []);
 
   const updateEditingPoint = useCallback((index: number, point: AreaPoint) => {
@@ -115,15 +106,12 @@ export function useAreaEdit() {
     editingUndoStack,
     isEditAreaDialogOpen,
     editingAreaSnapshot,
-    contextMenu,
     isEditing,
     setEditingAreaId,
     setIsEditAreaDialogOpen,
     setEditingAreaSnapshot,
     startEditingArea,
     openEditInfo,
-    openContextMenu,
-    closeContextMenu,
     updateEditingPoint,
     removeEditingPointAt,
     insertEditingPointAtNearestEdge,

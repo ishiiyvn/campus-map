@@ -45,12 +45,12 @@ export function MapEditorToolbar({
   onOpenLayerSidebar,
 }: MapEditorToolbarProps) {
   const [showOpacityPanel, setShowOpacityPanel] = useState(false);
-
-  if (!visible) return null;
   const t = useTranslations("toolbar");
 
+  if (!visible) return null;
+
   return (
-    <div className={cn("absolute top-4 right-4 flex flex-col gap-4 items-end z-50", className)}>
+    <div className={cn("flex flex-col gap-4 items-end pointer-events-auto", className)}>
       {/* Edit Mode Toggle */}
       <div className="bg-white/90 backdrop-blur shadow-md px-3 py-2 rounded-lg flex items-center gap-2">
         <Switch

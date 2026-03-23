@@ -15,9 +15,9 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   }
 
   return (
-    <div className="min-h-svh flex flex-col">
+    <div className="min-h-svh flex flex-col overflow-hidden">
       <AppTopbar />
-      <main className="flex-1">
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>

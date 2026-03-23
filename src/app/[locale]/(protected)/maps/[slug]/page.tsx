@@ -41,7 +41,7 @@ export default async function PublicMapPage({ params }: PublicMapPageProps) {
   const layers = await getLayers(map.id);
 
   return (
-    <div className="w-full h-screen bg-slate-100 relative">
+    <div className="w-full h-screen bg-slate-100 relative overflow-hidden">
       <MapViewerWrapper
         mapData={{
           ...map,

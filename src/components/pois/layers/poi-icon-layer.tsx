@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { memo, useState, useEffect, useRef, useMemo } from "react";
 import { Layer, Group, Circle, Image as KonvaImage, Text } from "react-konva";
 import Konva from "konva";
 import { PointOfInterest, Category } from "@/server/db/schema";
@@ -54,7 +54,7 @@ function PoiIconGroup({
   onDragEnd,
 }: {
   poi: PointOfInterest;
-  category: { color?: string | null; icon?: string | null } | null;
+  category: Category | null | undefined;
   isEditMode: boolean;
   isRepositioningThis: boolean;
   onPoiContextMenu: (poi: PointOfInterest, screenPos: { x: number; y: number }) => void;
@@ -73,21 +73,13 @@ function PoiIconGroup({
     if (!isEditMode || isRepositioningThis) return;
     e.cancelBubble = true;
     e.evt.preventDefault();
-    const stage = e.target.getStage();
-    if (!stage) return;
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-    onPoiContextMenu(poi, { x: pointer.x, y: pointer.y });
+    onPoiContextMenu(poi, { x: e.evt.clientX, y: e.evt.clientY });
   };
 
   const handleClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (!isEditMode || isRepositioningThis) return;
     e.cancelBubble = true;
-    const stage = e.target.getStage();
-    if (!stage) return;
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-    onPoiContextMenu(poi, { x: pointer.x, y: pointer.y });
+    onPoiContextMenu(poi, { x: e.evt.clientX, y: e.evt.clientY });
   };
 
   return (
@@ -144,7 +136,7 @@ function PoiIconGroup({
   );
 }
 
-export function PoiIconLayer({
+export const PoiIconLayer = memo(function PoiIconLayer({
   pois,
   categories,
   isEditMode,
@@ -155,20 +147,23 @@ export function PoiIconLayer({
   onDragStart,
   onDragEnd,
 }: PoiIconLayerProps) {
-  const getCategoryById = (categoryId: number | null) => {
-    if (!categoryId) return null;
-    return categories.find((c) => c.id === categoryId) || null;
-  };
+  const categoryMap = useMemo(() => {
+    const map = new Map<number, Category>();
+    categories.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [categories]);
 
-  const iconPois = pois.filter((poi) => {
-    const category = getCategoryById(poi.category_id);
-    return category?.display_type !== "text";
-  });
+  const iconPois = useMemo(() => {
+    return pois.filter((poi) => {
+      const category = categoryMap.get(poi.category_id);
+      return category?.display_type !== "text";
+    });
+  }, [pois, categoryMap]);
 
   return (
     <Layer>
       {iconPois.map((poi) => {
-        const category = getCategoryById(poi.category_id);
+        const category = categoryMap.get(poi.category_id);
         const isRepositioningThis = repositioning && repositionPoiId === poi.id;
 
         return (
@@ -187,4 +182,4 @@ export function PoiIconLayer({
       })}
     </Layer>
   );
-}
+});

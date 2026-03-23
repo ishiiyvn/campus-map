@@ -2,7 +2,7 @@
 
 import type Konva from "konva";
 import { useCallback } from "react";
-import { useMapZoom } from "@/components/maps/hooks/use-map-zoom";
+import { useSmoothZoom } from "@/components/maps/hooks/use-smooth-zoom";
 
 interface UseStageZoomOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -11,7 +11,7 @@ interface UseStageZoomOptions {
 }
 
 export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseStageZoomOptions) {
-  const { handleWheel, setScale, minZoom, maxZoom } = useMapZoom(stageRef, viewportConfig);
+  const { handleWheel, setScale, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia } = useSmoothZoom(stageRef);
 
   const onWheel = useCallback(
     (event: Konva.KonvaEventObject<WheelEvent>) => {
@@ -21,5 +21,5 @@ export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseSta
     [handleWheel, onScaleUpdate]
   );
 
-  return { onWheel, setScale, minZoom, maxZoom };
+  return { onWheel, setScale, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia };
 }

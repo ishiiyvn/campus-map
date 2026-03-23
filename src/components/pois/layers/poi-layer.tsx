@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { Layer, Group, Text, Rect } from "react-konva";
 import Konva from "konva";
 import { PointOfInterest, Category } from "@/server/db/schema";
@@ -13,7 +14,7 @@ interface PoiLayerProps {
   onPoiMouseLeave: (event: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
-export function PoiLayer({
+export const PoiLayer = memo(function PoiLayer({
   pois,
   categories,
   isEditMode,
@@ -21,20 +22,23 @@ export function PoiLayer({
   onPoiMouseEnter,
   onPoiMouseLeave,
 }: PoiLayerProps) {
-  const getCategoryById = (categoryId: number | null) => {
-    if (!categoryId) return null;
-    return categories.find((c) => c.id === categoryId) || null;
-  };
+  const categoryMap = useMemo(() => {
+    const map = new Map<number, Category>();
+    categories.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [categories]);
 
-  const textPois = pois.filter((poi) => {
-    const category = getCategoryById(poi.category_id);
-    return category?.display_type === "text";
-  });
+  const textPois = useMemo(() => {
+    return pois.filter((poi) => {
+      const category = categoryMap.get(poi.category_id);
+      return category?.display_type === "text";
+    });
+  }, [pois, categoryMap]);
 
   return (
     <Layer>
       {textPois.map((poi) => {
-        const category = getCategoryById(poi.category_id);
+        const category = categoryMap.get(poi.category_id);
         const color = poi.icon_color || category?.color || "#3b82f6";
 
         return (
@@ -91,4 +95,4 @@ export function PoiLayer({
       })}
     </Layer>
   );
-}
+});

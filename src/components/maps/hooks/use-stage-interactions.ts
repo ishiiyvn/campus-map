@@ -1,13 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import Konva from "konva";
-
-interface StageContextMenu {
-  areaId: number;
-  x: number;
-  y: number;
-}
 
 interface PoiInteractionsAdapter {
   isEditMode: boolean;
@@ -18,26 +12,26 @@ interface PoiInteractionsAdapter {
 interface UseStageInteractionsOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
   isDraggingRef: React.MutableRefObject<boolean>;
-  contextMenu: StageContextMenu | null;
-  closeContextMenu: () => void;
   editingAreaId: number | null;
   editingPoints: Array<{ x: number; y: number }>;
   insertEditingPointAtNearestEdge: (point: { x: number; y: number }) => void;
   getPointerMapPosition: () => { x: number; y: number } | null;
   poiInteractions: PoiInteractionsAdapter;
+  onDragEnd?: (velocityX: number, velocityY: number) => void;
 }
 
 export function useStageInteractions({
   stageRef,
   isDraggingRef,
-  contextMenu,
-  closeContextMenu,
   editingAreaId,
   editingPoints,
   insertEditingPointAtNearestEdge,
   getPointerMapPosition,
   poiInteractions,
+  onDragEnd,
 }: UseStageInteractionsOptions) {
+  const lastPosRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
+
   const setCursor = useCallback(
     (cursor: string) => {
       const container = stageRef.current?.container();
@@ -51,10 +45,6 @@ export function useStageInteractions({
   const onStageClick = useCallback(
     (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>, isTap: boolean) => {
       if (isDraggingRef.current) return;
-
-      if (contextMenu && event.target === event.target.getStage()) {
-        closeContextMenu();
-      }
 
       if (editingAreaId !== null) {
         if (poiInteractions.isEditMode && event.target === event.target.getStage()) {
@@ -71,8 +61,6 @@ export function useStageInteractions({
       poiInteractions.handleStageClick(event);
     },
     [
-      closeContextMenu,
-      contextMenu,
       editingAreaId,
       editingPoints.length,
       getPointerMapPosition,
@@ -96,16 +84,43 @@ export function useStageInteractions({
     [onStageClick]
   );
 
-  const handleDragStart = useCallback(() => {
-    isDraggingRef.current = true;
-    if (contextMenu) {
-      closeContextMenu();
-    }
-  }, [closeContextMenu, contextMenu, isDraggingRef]);
+  const handleDragStart = useCallback(
+    (event: Konva.KonvaEventObject<DragEvent>) => {
+      isDraggingRef.current = true;
+      const stage = stageRef.current;
+      if (stage) {
+        lastPosRef.current = { x: stage.x(), y: stage.y(), time: Date.now() };
+      }
+    },
+    [isDraggingRef, stageRef]
+  );
 
-  const handleDragEnd = useCallback(() => {
-    isDraggingRef.current = false;
-  }, [isDraggingRef]);
+  const handleDragMove = useCallback((event: Konva.KonvaEventObject<DragEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const now = Date.now();
+    const dt = now - lastPosRef.current.time;
+    if (dt > 0) {
+      lastPosRef.current = { x: stage.x(), y: stage.y(), time: now };
+    }
+  }, [stageRef]);
+
+  const handleDragEnd = useCallback(
+    (event: Konva.KonvaEventObject<DragEvent>) => {
+      isDraggingRef.current = false;
+      const stage = stageRef.current;
+      if (!stage || !onDragEnd) return;
+
+      const now = Date.now();
+      const dt = now - lastPosRef.current.time;
+      if (dt > 0 && dt < 100) {
+        const velocityX = (stage.x() - lastPosRef.current.x) / dt;
+        const velocityY = (stage.y() - lastPosRef.current.y) / dt;
+        onDragEnd(velocityX, velocityY);
+      }
+    },
+    [isDraggingRef, onDragEnd, stageRef]
+  );
 
   const isPointerTool =
     poiInteractions.activeTool === "add_poi" || poiInteractions.activeTool === "add_area";
@@ -115,6 +130,7 @@ export function useStageInteractions({
       onClick: handleClick,
       onTap: handleTap,
       onDragStart: handleDragStart,
+      onDragMove: handleDragMove,
       onDragEnd: handleDragEnd,
       draggable: poiInteractions.activeTool === "select" || poiInteractions.activeTool === "add_area",
       className: isPointerTool ? "cursor-crosshair" : "cursor-move",
@@ -122,7 +138,15 @@ export function useStageInteractions({
         cursor: isPointerTool ? "crosshair" : "move",
       },
     }),
-    [handleClick, handleDragEnd, handleDragStart, handleTap, isPointerTool, poiInteractions.activeTool]
+    [
+      handleClick,
+      handleDragEnd,
+      handleDragMove,
+      handleDragStart,
+      handleTap,
+      isPointerTool,
+      poiInteractions.activeTool,
+    ]
   );
 
   return {

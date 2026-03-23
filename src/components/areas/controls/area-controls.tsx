@@ -24,7 +24,7 @@ export function AreaControls({
   const t = useTranslations("areas.controls");
 
   return (
-    <div className="absolute top-16 left-16 bg-white/90 backdrop-blur shadow-md p-2 rounded-lg flex items-center gap-2">
+    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur shadow-md p-2 rounded-lg flex items-center gap-2 pointer-events-auto">
       <Button
         type="button"
         size="sm"

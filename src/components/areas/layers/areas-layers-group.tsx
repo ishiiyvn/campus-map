@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import Konva from "konva";
 import { Layer } from "react-konva";
 import { AreaLayer } from "@/components/areas/layers/area-layer";
@@ -32,8 +33,8 @@ interface AreasLayersGroupProps {
     activeTool: string;
   };
   handlers: {
-    onAreaMenu: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
-    onAreaClick: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+    onAreaContextMenu: (areaId: number, screenPos: { x: number; y: number }) => void;
+    onAreaClick?: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
     onEditGroupDragStart: () => void;
     onEditGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
     onEditInsertPoint: (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
@@ -52,11 +53,11 @@ interface AreasLayersGroupProps {
   };
 }
 
-export function AreasLayersGroup({ layers, layerVisibility, data, flags, handlers }: AreasLayersGroupProps) {
+export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVisibility, data, flags, handlers }: AreasLayersGroupProps) {
   const { areaLines, editingAreaId, editingPoints, draftPoints, draftPointsFlat, pointRadius } = data;
   const { isEditMode, activeTool } = flags;
   const {
-    onAreaMenu,
+    onAreaContextMenu,
     onAreaClick,
     onEditGroupDragStart,
     onEditGroupDragEnd,
@@ -75,16 +76,21 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
     onSetCursor,
   } = handlers;
 
-  const sortedLayers = [...layers].sort((a, b) => a.display_order - b.display_order);
+  const sortedLayers = useMemo(() => 
+    [...layers].sort((a, b) => a.display_order - b.display_order), 
+    [layers]
+  );
 
-  const areasByLayer = areaLines.reduce((acc, area) => {
-    const layerId = area.layer_id ?? "unassigned";
-    if (!acc[layerId]) {
-      acc[layerId] = [];
-    }
-    acc[layerId].push(area);
-    return acc;
-  }, {} as Record<string | number, AreaRenderData[]>);
+  const areasByLayer = useMemo(() => {
+    return areaLines.reduce((acc, area) => {
+      const layerId = area.layer_id ?? "unassigned";
+      if (!acc[layerId]) {
+        acc[layerId] = [];
+      }
+      acc[layerId].push(area);
+      return acc;
+    }, {} as Record<string | number, AreaRenderData[]>);
+  }, [areaLines]);
 
   const getLayerName = (layerId: number | null) => {
     if (layerId === null) return "Sin capa";
@@ -107,8 +113,9 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
             <AreaLayer
               areas={layerAreas}
               hiddenAreaId={editingAreaId}
+              isEditMode={isEditMode}
               activeTool={activeTool}
-              onAreaMenu={onAreaMenu}
+              onAreaContextMenu={onAreaContextMenu}
               onAreaClick={onAreaClick}
             />
           </Layer>
@@ -120,8 +127,9 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
           <AreaLayer
             areas={areasByLayer["unassigned"]}
             hiddenAreaId={editingAreaId}
+            isEditMode={isEditMode}
             activeTool={activeTool}
-            onAreaMenu={onAreaMenu}
+            onAreaContextMenu={onAreaContextMenu}
             onAreaClick={onAreaClick}
           />
         </Layer>
@@ -191,4 +199,4 @@ export function AreasLayersGroup({ layers, layerVisibility, data, flags, handler
       )}
     </>
   );
-}
+});

@@ -1,26 +1,29 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Pentagon, Pencil, Trash2, X } from "lucide-react";
+import { Pentagon, Pencil, Trash2 } from "lucide-react";
+import { Area } from "@/server/db/schema";
+import { deleteArea } from "@/server/actions/areas";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
-interface AreaContextMenuProps {
-  x: number;
-  y: number;
+interface AreaActionMenuProps {
+  area: Area | null;
+  position: { x: number; y: number } | null;
+  onClose: () => void;
   onEditPolygon: () => void;
   onEditInfo: () => void;
   onDelete: () => void;
-  onClose: () => void;
 }
 
-export function AreaContextMenu({
-  x,
-  y,
+export function AreaActionMenu({
+  area,
+  position,
+  onClose,
   onEditPolygon,
   onEditInfo,
   onDelete,
-  onClose,
-}: AreaContextMenuProps) {
+}: AreaActionMenuProps) {
   const t = useTranslations("areas");
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -31,19 +34,36 @@ export function AreaContextMenu({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    if (area) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [onClose]);
+  }, [area, onClose]);
+
+  async function handleDelete() {
+    if (!area || !confirm(t("deleteConfirm"))) return;
+    try {
+      await deleteArea(area.id!);
+      toast.success(t("deleteSuccess"));
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      toast.error(t("deleteError"));
+    }
+  }
+
+  if (!area || !position) return null;
 
   return (
     <div
       ref={menuRef}
       className="fixed z-[100] bg-background border rounded-lg shadow-lg py-1 min-w-[180px]"
       style={{
-        left: x,
-        top: y,
+        left: position.x,
+        top: position.y,
       }}
     >
       <button
@@ -68,10 +88,7 @@ export function AreaContextMenu({
       </button>
       <div className="h-px bg-border my-1" />
       <button
-        onClick={() => {
-          onDelete();
-          onClose();
-        }}
+        onClick={handleDelete}
         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors"
       >
         <Trash2 className="h-4 w-4" />
