@@ -175,7 +175,7 @@ export function LayerSidebar({
   };
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-black/20 z-[70]" onClick={onClose} />}
 
       <DndContext
         sensors={sensors}
@@ -187,7 +187,7 @@ export function LayerSidebar({
       >
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-80 bg-white shadow-lg z-[60] flex flex-col overflow-visible",
+            "fixed right-0 top-0 h-full w-80 bg-white shadow-lg z-[70] flex flex-col overflow-visible",
             isOpen ? "translate-x-0" : "translate-x-full",
             "transition-transform duration-200 ease-in-out"
           )}

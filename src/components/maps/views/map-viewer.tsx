@@ -722,6 +722,18 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
         />
       </div>
 
+      <LayerSidebar
+        mapId={mapData.id!}
+        layers={mapLayers}
+        areas={mapAreas}
+        isOpen={isLayerSidebarOpen}
+        onClose={() => setIsLayerSidebarOpen(false)}
+        onToggleLayerVisibility={toggleLayerVisibility}
+        onMoveAreaToLayer={handleMoveAreaToLayer}
+        onReorderAreasInLayer={handleReorderAreasInLayer}
+        onReorderLayers={handleReorderLayers}
+      />
+
       <MapOverlays
         isMobile={overlayIsMobile}
         toolbar={toolbar}
