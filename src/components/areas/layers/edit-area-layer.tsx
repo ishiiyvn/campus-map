@@ -5,6 +5,7 @@ import type { AreaPoint } from "../utils/types";
 interface EditAreaLayerProps {
   points: AreaPoint[];
   pointRadius: number;
+  dashArray: [number, number];
   canDrag: boolean;
   onGroupDragStart: () => void;
   onGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
@@ -21,6 +22,7 @@ interface EditAreaLayerProps {
 export function EditAreaLayer({
   points,
   pointRadius,
+  dashArray,
   canDrag,
   onGroupDragStart,
   onGroupDragEnd,
@@ -50,7 +52,7 @@ export function EditAreaLayer({
         fill="rgba(59,130,246,0.2)"
         stroke="#3b82f6"
         strokeWidth={2}
-        dash={[8, 6]}
+        dash={dashArray}
         hitStrokeWidth={15}
         onClick={onInsertPoint}
         onTap={onInsertPoint}
@@ -63,7 +65,7 @@ export function EditAreaLayer({
           radius={pointRadius}
           fill="#3b82f6"
           stroke="#ffffff"
-          strokeWidth={2}
+          strokeWidth={pointRadius * 0.3}
           draggable
           onDragStart={(event) => {
             event.cancelBubble = true;

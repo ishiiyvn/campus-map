@@ -6,6 +6,8 @@ import { deleteLayer } from "@/server/actions/layers";
 import { toast } from "sonner";
 import { Loader2, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useTranslations } from "next-intl";
 
 interface LayersListProps {
   layers: Layer[];
@@ -14,30 +16,31 @@ interface LayersListProps {
 }
 
 export function LayersList({ layers, onEdit, onDeleted }: LayersListProps) {
+  const t = useTranslations("layers");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ layerId: number; name: string } | null>(null);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de que quieres eliminar esta capa?")) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
 
     try {
-      setDeletingId(id);
-      await deleteLayer(id);
-      toast.success("Capa eliminada exitosamente");
+      setDeletingId(deleteConfirm.layerId);
+      await deleteLayer(deleteConfirm.layerId);
+      toast.success(t("deleteSuccess"));
       onDeleted?.();
     } catch (error) {
       console.error(error);
-      toast.error("Error al eliminar la capa");
+      toast.error(t("deleteError"));
     } finally {
       setDeletingId(null);
+      setDeleteConfirm(null);
     }
   };
 
   if (layers.length === 0) {
     return (
       <p className="text-muted-foreground text-sm py-4">
-        No hay capas todavía. Crea una para comenzar.
+        {t("noLayers")} {t("noLayersHint")}
       </p>
     );
   }
@@ -73,7 +76,7 @@ export function LayersList({ layers, onEdit, onDeleted }: LayersListProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleDelete(layer.id)}
+              onClick={() => setDeleteConfirm({ layerId: layer.id, name: layer.name })}
               disabled={deletingId === layer.id}
             >
               {deletingId === layer.id ? (
@@ -85,6 +88,14 @@ export function LayersList({ layers, onEdit, onDeleted }: LayersListProps) {
           </div>
         </div>
       ))}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title={t("deleteTitle")}
+        description={deleteConfirm ? t("deleteConfirm", { name: deleteConfirm.name }) : undefined}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

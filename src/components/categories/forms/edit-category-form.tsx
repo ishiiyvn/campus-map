@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import CategoryFormFields from "./category-form-fields";
 import { useTranslations } from "next-intl";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface EditCategoryFormProps {
   category: Category;
@@ -24,6 +25,7 @@ export default function EditCategoryForm({ category, onSuccess }: EditCategoryFo
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<CategoryInput>({
     resolver: zodResolver(categorySchema),
@@ -66,8 +68,6 @@ export default function EditCategoryForm({ category, onSuccess }: EditCategoryFo
   }
 
   async function handleDelete() {
-    if (!confirm(t("deleteConfirm"))) return;
-
     try {
       setIsDeleting(true);
       await deleteCategory(category.id!);
@@ -97,13 +97,20 @@ export default function EditCategoryForm({ category, onSuccess }: EditCategoryFo
             type="button"
             variant="destructive"
             size="icon"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={isLoading || isDeleting}
           >
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </Button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t("deleteConfirm")}
+        onConfirm={handleDelete}
+      />
     </Form>
   );
 }

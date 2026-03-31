@@ -14,6 +14,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import AreaFormFields from "./area-form-fields";
 import { isAreaCodeAvailable } from "@/server/actions/areas";
 import { LevelManagement } from "@/components/areas/level-management";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useTranslations } from "next-intl";
 
 interface EditAreaFormProps {
   area: Area;
@@ -33,7 +35,9 @@ export default function EditAreaForm({
   layers = [],
 }: EditAreaFormProps) {
   const router = useRouter();
+  const t = useTranslations("areas");
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<AreaInput>({
     resolver: zodResolver(areaSchema),
@@ -90,21 +94,19 @@ export default function EditAreaForm({
   }
 
   async function handleDelete() {
-    if (window.confirm("Are you sure you want to delete this area?")) {
-      try {
-        setIsLoading(true);
-        await deleteArea(area.id!);
-        toast.success("Area deleted successfully");
-        if (onSuccess) {
-          onSuccess(area);
-        }
-        router.refresh();
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to delete area");
-      } finally {
-        setIsLoading(false);
+    try {
+      setIsLoading(true);
+      await deleteArea(area.id!);
+      toast.success("Area deleted successfully");
+      if (onSuccess) {
+        onSuccess(area);
       }
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete area");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -123,7 +125,7 @@ export default function EditAreaForm({
           <Button 
             type="button" 
             variant="destructive" 
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={isLoading}
           >
             <Trash2 className="h-4 w-4" />
@@ -133,6 +135,14 @@ export default function EditAreaForm({
         {/* Hidden fields for required data */}
         <input type="hidden" {...form.register("map_id", { valueAsNumber: true })} />
       </form>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t("deleteTitle")}
+        description={t("menu.deleteConfirm")}
+        onConfirm={handleDelete}
+      />
     </Form>
   );
 }

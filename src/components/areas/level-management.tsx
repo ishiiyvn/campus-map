@@ -11,6 +11,8 @@ import {
 } from "@/server/actions/levels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useTranslations } from "next-intl";
 import {
   DndContext,
   closestCenter,
@@ -136,11 +138,13 @@ interface LevelManagementProps {
 }
 
 export function LevelManagement({ areaId, className }: LevelManagementProps) {
+  const t = useTranslations("levels");
   const [levels, setLevels] = useState<Level[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [newLevelName, setNewLevelName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -160,7 +164,6 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
       setLevels(data);
     } catch (error) {
       console.error("Error loading levels:", error);
-      toast.error("Failed to load levels");
     } finally {
       setIsLoading(false);
     }
@@ -179,10 +182,10 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
         setLevels([...levels, newLevel]);
         setNewLevelName("");
         setIsAdding(false);
-        toast.success("Level added");
+        toast.success(t("addSuccess"));
       } catch (error) {
         console.error("Error adding level:", error);
-        toast.error("Failed to add level");
+        toast.error(t("addError"));
       }
     });
   }
@@ -192,25 +195,31 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
       try {
         await updateLevel(id, { area_id: areaId, name });
         setLevels(levels.map((l) => (l.id === id ? { ...l, name } : l)));
-        toast.success("Level updated");
+        toast.success(t("updateSuccess"));
       } catch (error) {
         console.error("Error updating level:", error);
-        toast.error("Failed to update level");
+        toast.error(t("updateError"));
       }
     });
   }
 
-  async function handleDeleteLevel(id: number) {
-    if (!confirm("Delete this level?")) return;
+  function handleDeleteLevel(id: number) {
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDeleteLevel() {
+    if (deleteConfirmId === null) return;
 
     startTransition(async () => {
       try {
-        await deleteLevel(id);
-        setLevels(levels.filter((l) => l.id !== id));
-        toast.success("Level deleted");
+        await deleteLevel(deleteConfirmId);
+        setLevels(levels.filter((l) => l.id !== deleteConfirmId));
+        toast.success(t("deleteSuccess"));
       } catch (error) {
         console.error("Error deleting level:", error);
-        toast.error("Failed to delete level");
+        toast.error(t("deleteError"));
+      } finally {
+        setDeleteConfirmId(null);
       }
     });
   }
@@ -230,7 +239,7 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
           await reorderLevels(areaId, newItems.map((l) => l.id));
         } catch (error) {
           console.error("Error reordering levels:", error);
-          toast.error("Failed to save order");
+          toast.error(t("reorderError"));
         }
       });
     }
@@ -243,7 +252,7 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
   return (
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Levels</h3>
+        <h3 className="text-sm font-medium">{t("title")}</h3>
         {!isAdding && (
           <Button
             size="sm"
@@ -262,7 +271,7 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
           <Input
             value={newLevelName}
             onChange={(e) => setNewLevelName(e.target.value)}
-            placeholder="Level name (e.g., Ground, Floor 1)"
+            placeholder={t("namePlaceholder")}
             className="h-8"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAddLevel();
@@ -314,6 +323,14 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
           <p className="text-sm text-muted-foreground">No levels defined yet.</p>
         )
       )}
+
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title={t("deleteTitle")}
+        description={t("deleteConfirm")}
+        onConfirm={confirmDeleteLevel}
+      />
     </div>
   );
 }

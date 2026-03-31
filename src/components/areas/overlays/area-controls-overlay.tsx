@@ -1,7 +1,6 @@
 "use client";
 
-import { AreaControls } from "@/components/areas/controls/area-controls";
-import type { Area } from "@/server/db/schema";
+import { AreaControls, DrawMode } from "@/components/areas/controls/area-controls";
 import type { AreaPoint } from "@/components/areas/utils/types";
 
 interface AreaControlsOverlayProps {
@@ -10,22 +9,17 @@ interface AreaControlsOverlayProps {
   editingId: number | null;
   draftPoints: AreaPoint[];
   editPoints: AreaPoint[];
-  mapAreas: Area[];
+  mapAreas: unknown[];
   draftUndoStack: AreaPoint[][];
   editUndoStack: AreaPoint[][];
+  drawMode: DrawMode;
+  onDrawModeChange: (mode: DrawMode) => void;
   onDraftFinish: () => void;
   onDraftUndo: () => void;
   onDraftCancel: () => void;
   onEditUndo: () => void;
   onEditCancel: () => void;
-  onSetEditSnapshot: (area: Area) => void;
-  onRequestEditDialog: (
-    areaId: number,
-    points: AreaPoint[],
-    areas: Area[],
-    onOpen: (area: Area) => void
-  ) => void;
-  onOpenEditDialog: () => void;
+  onEditFinishAuto: () => void;
 }
 
 export function AreaControlsOverlay({
@@ -37,14 +31,14 @@ export function AreaControlsOverlay({
   mapAreas,
   draftUndoStack,
   editUndoStack,
+  drawMode,
+  onDrawModeChange,
   onDraftFinish,
   onDraftUndo,
   onDraftCancel,
   onEditUndo,
   onEditCancel,
-  onSetEditSnapshot,
-  onRequestEditDialog,
-  onOpenEditDialog,
+  onEditFinishAuto,
 }: AreaControlsOverlayProps) {
   return (
     <>
@@ -52,6 +46,8 @@ export function AreaControlsOverlay({
         <AreaControls
           isEditing={false}
           canUndo={draftUndoStack.length > 0}
+          drawMode={drawMode}
+          onDrawModeChange={onDrawModeChange}
           onFinish={onDraftFinish}
           onUndo={onDraftUndo}
           onCancel={onDraftCancel}
@@ -64,12 +60,7 @@ export function AreaControlsOverlay({
         <AreaControls
           isEditing
           canUndo={editUndoStack.length > 0}
-          onFinish={() =>
-            onRequestEditDialog(editingId, editPoints, mapAreas, (area) => {
-              onSetEditSnapshot(area);
-              onOpenEditDialog();
-            })
-          }
+          onFinish={onEditFinishAuto}
           onUndo={onEditUndo}
           onCancel={onEditCancel}
           isFinishDisabled={editPoints.length < 3}

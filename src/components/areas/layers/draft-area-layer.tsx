@@ -6,6 +6,7 @@ interface DraftAreaLayerProps {
   points: AreaPoint[];
   flatPoints: number[];
   pointRadius: number;
+  dashArray: [number, number];
   canDrag: boolean;
   onGroupDragStart: () => void;
   onGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
@@ -25,6 +26,7 @@ export function DraftAreaLayer({
   points,
   flatPoints,
   pointRadius,
+  dashArray,
   canDrag,
   onGroupDragStart,
   onGroupDragEnd,
@@ -57,7 +59,7 @@ export function DraftAreaLayer({
         fill="rgba(59,130,246,0.2)"
         stroke="#3b82f6"
         strokeWidth={2}
-        dash={[8, 6]}
+        dash={dashArray}
         hitStrokeWidth={15}
         onClick={onInsertPoint}
         onTap={onInsertPoint}
@@ -70,7 +72,7 @@ export function DraftAreaLayer({
           radius={pointRadius}
           fill="#3b82f6"
           stroke="#ffffff"
-          strokeWidth={2}
+          strokeWidth={pointRadius * 0.3}
           draggable={canDrag}
           onDragStart={(event) => {
             event.cancelBubble = true;

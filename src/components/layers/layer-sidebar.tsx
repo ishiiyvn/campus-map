@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import AddLayerForm from "@/components/layers/forms/layer-form-fields";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useTranslations } from "next-intl";
+import AddLayerForm from "@/components/layers/forms/add-layer-form";
+import { EditLayerForm } from "@/components/layers/forms/edit-layer-form";
 import {
   DndContext,
   DragOverlay,
@@ -26,24 +30,30 @@ import { LayerSidebarProps } from "./layer-sidebar/types";
 import { LayerSection } from "./layer-sidebar/layer-section";
 import { UnassignedSection } from "./layer-sidebar/unassigned-section";
 import { useAreaDrag } from "./layer-sidebar/use-area-drag";
-import { reorderLayers } from "@/server/actions/layers";
+import { reorderLayers, deleteLayer } from "@/server/actions/layers";
 import { Layer } from "@/server/db/schema";
 
-function createLayerCollisionDetection(layerIds: number[]): CollisionDetection {
-  const layerIdSet = new Set(layerIds);
+function createLayerCollisionDetection(layerIds: number[], activeLayerId: number | null): CollisionDetection {
+  const areaIdRegex = /^area-\d+$/;
+  const layerSortRegex = /^layer-\d+$/;
+  const layerDropRegex = /^layer-drop-\d+$/;
 
   return (args) => {
-    // If dragging a layer, use closestCorners but filter out droppable zones
-    if (layerIdSet.has(Number(args.active.id))) {
-      const closestCornersResult = closestCorners(args);
-      // Filter out droppable containers (those with 'layer-' prefix - the expanded content areas)
-      return closestCornersResult.filter(
-        (collision) => !String(collision.id).startsWith("layer-")
-      );
+    if (activeLayerId !== null) {
+      // Layer is being dragged - use closestCorners, filter out droppable zones and area items
+      const result = closestCorners(args);
+      return result.filter((collision) => {
+        const id = String(collision.id);
+        return !layerDropRegex.test(id) && !areaIdRegex.test(id);
+      });
     }
 
-    // For everything else (areas), use rectIntersection
-    return rectIntersection(args);
+    // Area is being dragged - use rectIntersection, filter out layer items
+    const result = rectIntersection(args);
+    return result.filter((collision) => {
+      const id = String(collision.id);
+      return !layerSortRegex.test(id);
+    });
   };
 }
 
@@ -60,9 +70,13 @@ export function LayerSidebar({
 }: LayerSidebarProps) {
   const [expandedLayers, setExpandedLayers] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingLayerId, setEditingLayerId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ layerId: number; name: string } | null>(null);
   const [localLayers, setLocalLayers] = useState(layers);
   const [activeLayer, setActiveLayer] = useState<Layer | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const t = useTranslations("layers");
 
   // Sync with parent prop only when dragged layer is not active
   useEffect(() => {
@@ -105,11 +119,17 @@ export function LayerSidebar({
   const sortedLayers = localLayers;
 
   const handleDragStart = (event: DragStartEvent) => {
-    const activeId = Number(event.active.id);
-    const layer = localLayers.find((l) => l.id === activeId);
-    if (layer) {
-      setActiveLayer(layer);
+    const activeId = String(event.active.id);
+
+    if (activeId.startsWith("layer-")) {
+      // Layer drag
+      const layerId = Number(activeId.replace("layer-", ""));
+      const layer = localLayers.find((l) => l.id === layerId);
+      if (layer) {
+        setActiveLayer(layer);
+      }
     } else {
+      // Area drag - pass event to area drag handler
       setActiveLayer(null);
       handleAreaDragStart(event);
     }
@@ -132,13 +152,22 @@ export function LayerSidebar({
     const draggedLayer = activeLayer;
     setActiveLayer(null);
 
-    if (draggedLayer && over) {
-      const overId = Number(over.id);
+    if (!over) {
+      handleAreaDragEnd(event);
+      return;
+    }
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // Layer drag end
+    if (draggedLayer && activeId.startsWith("layer-") && overId.startsWith("layer-")) {
+      const targetLayerId = Number(overId.replace("layer-", ""));
 
       // Find the original indices from the layers prop (before any drag-over updates)
       const originalLayers = layers;
       const oldIndex = originalLayers.findIndex((l) => l.id === draggedLayer.id);
-      const newIndex = originalLayers.findIndex((l) => l.id === overId);
+      const newIndex = originalLayers.findIndex((l) => l.id === targetLayerId);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const reordered = arrayMove(originalLayers, oldIndex, newIndex);
@@ -165,6 +194,7 @@ export function LayerSidebar({
       return;
     }
 
+    // Area drag end - pass to area drag handler
     handleAreaDragEnd(event);
   };
 
@@ -180,14 +210,14 @@ export function LayerSidebar({
       <DndContext
         sensors={sensors}
         measuring={measuring}
-        collisionDetection={createLayerCollisionDetection(localLayers.map(l => l.id))}
+        collisionDetection={createLayerCollisionDetection(localLayers.map(l => l.id), activeLayer?.id ?? null)}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-80 bg-white shadow-lg z-[70] flex flex-col overflow-visible",
+            "fixed right-0 top-0 h-full w-[26rem] bg-white shadow-lg z-[70] flex flex-col overflow-visible",
             isOpen ? "translate-x-0" : "translate-x-full",
             "transition-transform duration-200 ease-in-out"
           )}
@@ -203,7 +233,7 @@ export function LayerSidebar({
           {/* New Layer Button/Form */}
           <div className="p-4 border-b">
             {isCreateDialogOpen ? (
-              <AddLayerForm mapId={mapId} onSubmitCallback={() => setIsCreateDialogOpen(false)} />
+              <AddLayerForm mapId={mapId} onSubmitCallback={() => setIsCreateDialogOpen(false)} onCancel={() => setIsCreateDialogOpen(false)} />
             ) : (
               <Button variant="outline" className="w-full" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -214,7 +244,7 @@ export function LayerSidebar({
 
           {/* Layers */}
           <div className="flex-1 overflow-y-auto">
-            <SortableContext items={sortedLayers.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={sortedLayers.map((l) => `layer-${l.id}`)} strategy={verticalListSortingStrategy}>
               {sortedLayers.map((layer) => (
                 <LayerSection
                   key={layer.id}
@@ -224,9 +254,21 @@ export function LayerSidebar({
                     .sort((a, b) => a.display_order - b.display_order)}
                   isExpanded={expandedLayers.has(layer.id)}
                   onToggleExpanded={() => toggleExpanded(layer.id)}
-                onToggleVisibility={() => onToggleLayerVisibility?.(layer.id)}
-              />
-            ))}
+                  onToggleVisibility={() => onToggleLayerVisibility?.(layer.id)}
+                  onEdit={() => {
+                    setEditingLayerId(layer.id);
+                    setExpandedLayers((prev) => new Set(prev).add(layer.id));
+                  }}
+                  onDelete={() => setDeleteConfirm({ layerId: layer.id, name: layer.name })}
+                  editContent={editingLayerId === layer.id ? (
+                    <EditLayerForm
+                      layer={layer}
+                      onSubmitCallback={() => setEditingLayerId(null)}
+                      onCancel={() => setEditingLayerId(null)}
+                    />
+                  ) : undefined}
+                />
+              ))}
             </SortableContext>
             {localLayers.length === 0 && (
               <div className="p-4 text-center text-gray-500">
@@ -255,6 +297,23 @@ export function LayerSidebar({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title={t("deleteTitle")}
+        description={deleteConfirm ? t("deleteConfirm", { name: deleteConfirm.name }) : undefined}
+        onConfirm={async () => {
+          if (deleteConfirm) {
+            try {
+              await deleteLayer(deleteConfirm.layerId);
+              router.refresh();
+            } catch (error) {
+              console.error("Error deleting layer:", error);
+            }
+          }
+        }}
+      />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Area } from "@/server/db/schema";
 import type { AreaPoint } from "@/components/areas/utils/types";
+import type { DrawMode } from "@/components/areas/controls/area-controls";
 import type { AreaUiProps } from "@/components/areas/overlays/area-ui";
 import type { EditorTool } from "@/components/maps/editor-tools/map-editor-toolbar";
 
@@ -19,6 +20,8 @@ interface UseMapOverlaysPropsOptions {
   editPoints: AreaPoint[];
   draftUndoStack: AreaPoint[][];
   editingUndoStack: AreaPoint[][];
+  drawMode: DrawMode;
+  onDrawModeChange: (mode: DrawMode) => void;
   isCreateOpen: boolean;
   isEditOpen: boolean;
   isDeleteOpen: boolean;
@@ -32,6 +35,7 @@ interface UseMapOverlaysPropsOptions {
   onDraftCancel: () => void;
   onEditUndo: () => void;
   onEditCancel: () => void;
+  onEditFinishAuto: () => void;
   onStartEditingArea: (area: Area) => void;
   onOpenEditInfo: (area: Area) => void;
   onSetEditSnapshot: (area: Area) => void;
@@ -63,6 +67,8 @@ export function useMapOverlaysProps({
   editPoints,
   draftUndoStack,
   editingUndoStack,
+  drawMode,
+  onDrawModeChange,
   isCreateOpen,
   isEditOpen,
   isDeleteOpen,
@@ -76,6 +82,7 @@ export function useMapOverlaysProps({
   onDraftCancel,
   onEditUndo,
   onEditCancel,
+  onEditFinishAuto,
   onStartEditingArea,
   onOpenEditInfo,
   onSetEditSnapshot,
@@ -118,6 +125,10 @@ export function useMapOverlaysProps({
       draft: draftUndoStack,
       edit: editingUndoStack,
     },
+    draw: {
+      drawMode,
+      onDrawModeChange,
+    },
     ui: {
       isEditMode,
       activeTool,
@@ -140,6 +151,7 @@ export function useMapOverlaysProps({
       onDraftCancel,
       onEditUndo,
       onEditCancel,
+      onEditFinishAuto,
       onStartEditingArea,
       onOpenEditInfo,
       onSetEditSnapshot,
@@ -158,10 +170,11 @@ export function useMapOverlaysProps({
   }), [
     mapId, mapAreas, editingAreaId, editingAreaSnapshot, draftPoints, editPoints,
     draftUndoStack, editingUndoStack, isEditMode, activeTool,
+    drawMode, onDrawModeChange,
     isCreateOpen, isEditOpen, isDeleteOpen, deleteTargetId,
     setCreateOpen, setEditOpen, setDeleteOpen, setDeleteTargetId,
     onDraftFinish, onDraftUndo, onDraftCancel, onEditUndo, onEditCancel,
-    onStartEditingArea, onOpenEditInfo, onSetEditSnapshot,
+    onEditFinishAuto, onStartEditingArea, onOpenEditInfo, onSetEditSnapshot,
     onRequestEditDialog, onCreateSuccess, onEditSuccess, onDeleteConfirm,
     onAreaCreated, onAreaUpdated, onAreaDeleted, onResetDraft, onResetEdit,
     onResetTool, onCloseDialogs,

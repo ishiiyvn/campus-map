@@ -2,6 +2,7 @@
 
 import type { Area } from "@/server/db/schema";
 import type { AreaPoint } from "@/components/areas/utils/types";
+import type { DrawMode } from "@/components/areas/controls/area-controls";
 import { AreaControlsOverlay } from "@/components/areas/overlays/area-controls-overlay";
 import { AreaDialogsOverlay } from "@/components/areas/overlays/area-dialogs-overlay";
 
@@ -17,6 +18,10 @@ export interface AreaUiProps {
   undo: {
     draft: AreaPoint[][];
     edit: AreaPoint[][];
+  };
+  draw: {
+    drawMode: DrawMode;
+    onDrawModeChange: (mode: DrawMode) => void;
   };
   ui: {
     isEditMode: boolean;
@@ -40,6 +45,7 @@ export interface AreaUiProps {
     onDraftCancel: () => void;
     onEditUndo: () => void;
     onEditCancel: () => void;
+    onEditFinishAuto: () => void;
     onStartEditingArea: (area: Area) => void;
     onOpenEditInfo: (area: Area) => void;
     onSetEditSnapshot: (area: Area) => void;
@@ -79,9 +85,10 @@ export interface AreaUiProps {
   };
 }
 
-export function AreaUi({ mapId, areas, undo, ui, dialogs, onDialogToggles, actions }: AreaUiProps) {
+export function AreaUi({ mapId, areas, undo, draw, ui, dialogs, onDialogToggles, actions }: AreaUiProps) {
   const { list, editingId, editSnapshot, draftPoints, editPoints } = areas;
   const { draft: draftUndoStack, edit: editingUndoStack } = undo;
+  const { drawMode, onDrawModeChange } = draw;
   const { isEditMode, activeTool } = ui;
   const { createOpen, editOpen, deleteOpen, deleteTargetId } = dialogs;
   const { setCreateOpen, setEditOpen, setDeleteOpen, setDeleteTargetId } = onDialogToggles;
@@ -96,14 +103,14 @@ export function AreaUi({ mapId, areas, undo, ui, dialogs, onDialogToggles, actio
         mapAreas={list}
         draftUndoStack={draftUndoStack}
         editUndoStack={editingUndoStack}
+        drawMode={drawMode}
+        onDrawModeChange={onDrawModeChange}
         onDraftFinish={actions.onDraftFinish}
         onDraftUndo={actions.onDraftUndo}
         onDraftCancel={actions.onDraftCancel}
         onEditUndo={actions.onEditUndo}
         onEditCancel={actions.onEditCancel}
-        onSetEditSnapshot={actions.onSetEditSnapshot}
-        onRequestEditDialog={actions.onRequestEditDialog}
-        onOpenEditDialog={() => setEditOpen(true)}
+        onEditFinishAuto={actions.onEditFinishAuto}
       />
 
       <AreaDialogsOverlay

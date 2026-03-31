@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { PointOfInterest } from "@/server/db/schema";
 import {
@@ -12,6 +13,7 @@ import {
 import { deletePointOfInterest } from "@/server/actions/pois";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface PoiContextMenuProps {
   children: React.ReactNode;
@@ -21,9 +23,9 @@ interface PoiContextMenuProps {
 
 export function PoiContextMenu({ children, poi, onEdit }: PoiContextMenuProps) {
   const t = useTranslations("poi");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   async function handleDelete() {
-    if (!confirm(t("deleteConfirm"))) return;
     try {
       await deletePointOfInterest(poi.id!);
       toast.success(t("deleteSuccess"));
@@ -35,19 +37,28 @@ export function PoiContextMenu({ children, poi, onEdit }: PoiContextMenuProps) {
   }
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={onEdit}>
-          <Pencil className="mr-2 h-4 w-4" />
-          {t("edit")}
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-          <Trash2 className="mr-2 h-4 w-4" />
-          {t("delete")}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={onEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("edit")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("delete")}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t("deleteConfirm")}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

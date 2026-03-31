@@ -14,6 +14,10 @@ export function useMapStage(stageRef: React.RefObject<Konva.Stage | null>, deps:
     }
   }, [stageRef]);
 
+  const updateScale = useCallback((newScale: number) => {
+    setStageScale(newScale);
+  }, []);
+
   const getPointerMapPosition = useCallback(() => {
     const stage = stageRef.current;
     if (!stage) return null;
@@ -32,6 +36,7 @@ export function useMapStage(stageRef: React.RefObject<Konva.Stage | null>, deps:
     stageScale,
     isDraggingRef,
     updateScaleFromStage,
+    updateScale,
     getPointerMapPosition,
   };
 }

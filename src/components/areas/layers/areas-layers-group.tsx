@@ -5,6 +5,7 @@ import Konva from "konva";
 import { Layer } from "react-konva";
 import { AreaLayer } from "@/components/areas/layers/area-layer";
 import { DraftAreaLayer } from "@/components/areas/layers/draft-area-layer";
+import { DraftCircleLayer } from "@/components/areas/layers/draft-circle-layer";
 import { EditAreaLayer } from "@/components/areas/layers/edit-area-layer";
 import type { AreaPoint } from "@/components/areas/utils/types";
 import type { Layer as LayerType } from "@/server/db/schema";
@@ -27,6 +28,11 @@ interface AreasLayersGroupProps {
     draftPoints: AreaPoint[];
     draftPointsFlat: number[];
     pointRadius: number;
+    dashArray: [number, number];
+    circleCenter: AreaPoint | null;
+    circleRadius: number;
+    circlePointsFlat: number[];
+    drawMode: "polygon" | "circle";
   };
   flags: {
     isEditMode: boolean;
@@ -49,12 +55,17 @@ interface AreasLayersGroupProps {
     onDraftPointRemove: (index: number) => void;
     onDraftPointDragStart: () => void;
     onDraftPointDragEnd: () => void;
+    onCircleRadiusHandleDrag: (point: AreaPoint) => void;
+    onCircleRadiusHandleDragEnd: () => void;
+    onCircleGroupDragStart: () => void;
+    onCircleGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
+    onCircleGroupDragMove: () => void;
     onSetCursor: (cursor: string) => void;
   };
 }
 
 export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVisibility, data, flags, handlers }: AreasLayersGroupProps) {
-  const { areaLines, editingAreaId, editingPoints, draftPoints, draftPointsFlat, pointRadius } = data;
+  const { areaLines, editingAreaId, editingPoints, draftPoints, draftPointsFlat, pointRadius, dashArray, circleCenter, circleRadius, circlePointsFlat, drawMode } = data;
   const { isEditMode, activeTool } = flags;
   const {
     onAreaContextMenu,
@@ -73,6 +84,11 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
     onDraftPointRemove,
     onDraftPointDragStart,
     onDraftPointDragEnd,
+    onCircleRadiusHandleDrag,
+    onCircleRadiusHandleDragEnd,
+    onCircleGroupDragStart,
+    onCircleGroupDragEnd,
+    onCircleGroupDragMove,
     onSetCursor,
   } = handlers;
 
@@ -140,6 +156,7 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
           <EditAreaLayer
             points={editingPoints}
             pointRadius={pointRadius}
+            dashArray={dashArray}
             canDrag={isEditMode}
             onGroupDragStart={onEditGroupDragStart}
             onGroupDragEnd={onEditGroupDragEnd}
@@ -155,12 +172,13 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
         </Layer>
       )}
 
-      {draftPoints.length > 0 && (
+      {draftPoints.length > 0 && drawMode === "polygon" && (
         <Layer>
           <DraftAreaLayer
             points={draftPoints}
             flatPoints={draftPointsFlat}
             pointRadius={pointRadius}
+            dashArray={dashArray}
             canDrag={isEditMode && activeTool === "add_area"}
             onGroupDragStart={onDraftGroupDragStart}
             onGroupDragEnd={onDraftGroupDragEnd}
@@ -194,6 +212,25 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
                 onSetCursor("crosshair");
               }
             }}
+          />
+        </Layer>
+      )}
+
+      {drawMode === "circle" && circleCenter && (
+        <Layer>
+          <DraftCircleLayer
+            center={circleCenter}
+            radius={circleRadius}
+            circlePointsFlat={circlePointsFlat}
+            dashArray={dashArray}
+            canDrag={isEditMode && activeTool === "add_area"}
+            onGroupDragStart={onCircleGroupDragStart}
+            onGroupDragEnd={onCircleGroupDragEnd}
+            onGroupDragMove={onCircleGroupDragMove}
+            onGroupMouseEnter={() => onSetCursor("grab")}
+            onGroupMouseLeave={() => onSetCursor("crosshair")}
+            onRadiusHandleDrag={onCircleRadiusHandleDrag}
+            onRadiusHandleDragEnd={onCircleRadiusHandleDragEnd}
           />
         </Layer>
       )}

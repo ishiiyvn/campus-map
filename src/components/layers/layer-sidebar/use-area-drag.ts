@@ -31,7 +31,9 @@ export function useAreaDrag({
   }, [areas]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    const areaId = event.active.id as number;
+    const activeId = String(event.active.id);
+    // active.id is prefixed: "area-{id}"
+    const areaId = Number(activeId.replace("area-", ""));
     const area = localAreas.find((a) => a.id === areaId) || null;
     setActiveArea(area);
     originalLayerIdRef.current = area?.layer_id ?? null;
@@ -42,15 +44,21 @@ export function useAreaDrag({
     const { active, over } = event;
     if (!over) return;
 
-    const areaId = active.id as number;
+    const activeId = String(active.id);
     const overId = String(over.id);
+
+    // active.id is prefixed: "area-{id}"
+    if (!activeId.startsWith("area-")) return;
+    const areaId = Number(activeId.replace("area-", ""));
 
     const draggedArea = localAreas.find((a) => a.id === areaId);
     if (!draggedArea) return;
 
-    // Dragging over another area item in a different layer
-    if (/^\d+$/.test(overId) && overId !== String(areaId)) {
-      const targetArea = localAreas.find((a) => a.id === Number(overId));
+    // Dragging over another area item (prefixed: "area-{id}")
+    if (overId.startsWith("area-")) {
+      const targetAreaId = Number(overId.replace("area-", ""));
+      if (targetAreaId === areaId) return;
+      const targetArea = localAreas.find((a) => a.id === targetAreaId);
       if (!targetArea) return;
 
       if (draggedArea.layer_id !== targetArea.layer_id) {
@@ -61,9 +69,9 @@ export function useAreaDrag({
       return;
     }
 
-    // Dragging over layer header
-    if (overId.startsWith("layer-")) {
-      const targetLayerId = parseInt(overId.replace("layer-", ""));
+    // Dragging over layer drop zone (prefixed: "layer-drop-{id}")
+    if (overId.startsWith("layer-drop-")) {
+      const targetLayerId = parseInt(overId.replace("layer-drop-", ""));
       if (draggedArea.layer_id !== targetLayerId) {
         setLocalAreas((prev) =>
           prev.map((a) => (a.id === areaId ? { ...a, layer_id: targetLayerId } : a))
@@ -88,14 +96,21 @@ export function useAreaDrag({
     setActiveArea(null);
     if (!over) return;
 
-    const areaId = active.id as number;
+    const activeId = String(active.id);
     const overId = String(over.id);
+
+    // active.id is prefixed: "area-{id}"
+    if (!activeId.startsWith("area-")) return;
+    const areaId = Number(activeId.replace("area-", ""));
     const originalLayerId = originalLayerIdRef.current;
 
-    // Dropped on another area item
-    if (/^\d+$/.test(overId) && overId !== String(areaId)) {
+    // Dropped on another area item (prefixed: "area-{id}")
+    if (overId.startsWith("area-")) {
+      const targetAreaId = Number(overId.replace("area-", ""));
+      if (targetAreaId === areaId) return;
+
       const draggedArea = localAreas.find((a) => a.id === areaId);
-      const targetArea = localAreas.find((a) => a.id === Number(overId));
+      const targetArea = localAreas.find((a) => a.id === targetAreaId);
 
       if (!draggedArea || !targetArea) return;
 
@@ -113,7 +128,7 @@ export function useAreaDrag({
           .sort((a, b) => a.display_order - b.display_order);
 
         const oldIndex = layerAreas.findIndex((a) => a.id === areaId);
-        const newIndex = layerAreas.findIndex((a) => a.id === Number(overId));
+        const newIndex = layerAreas.findIndex((a) => a.id === targetAreaId);
 
         if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
           const reordered = arrayMove(layerAreas, oldIndex, newIndex);
@@ -138,11 +153,11 @@ export function useAreaDrag({
       }
     }
 
-    // Dropped on layer header or unassigned
+    // Dropped on layer drop zone or unassigned
     const draggedArea = localAreas.find((a) => a.id === areaId);
     if (draggedArea) {
-      if (overId.startsWith("layer-")) {
-        const targetLayerId = parseInt(overId.replace("layer-", ""));
+      if (overId.startsWith("layer-drop-")) {
+        const targetLayerId = parseInt(overId.replace("layer-drop-", ""));
         onMoveAreaToLayer?.(areaId, targetLayerId);
       } else if (overId === "unassigned") {
         onMoveAreaToLayer?.(areaId, null);

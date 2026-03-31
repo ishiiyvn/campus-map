@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import Konva from "konva";
 
 const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 4.5;
 const ZOOM_DURATION = 0.15;
 const FRICTION = 0.96;
 const MIN_VELOCITY = 0.3;
@@ -89,16 +89,16 @@ export function useSmoothZoom(
   );
 
   const handleWheel = useCallback(
-    (e: Konva.KonvaEventObject<WheelEvent>) => {
+    (e: Konva.KonvaEventObject<WheelEvent>): number | null => {
       e.evt.preventDefault();
       const stage = stageRef.current;
-      if (!stage) return;
+      if (!stage) return null;
 
       stopInertia();
 
       const oldScale = stage.scaleX();
       const pointer = stage.getPointerPosition();
-      if (!pointer) return;
+      if (!pointer) return null;
 
       const mousePointTo = {
         x: (pointer.x - stage.x()) / oldScale,
@@ -126,6 +126,8 @@ export function useSmoothZoom(
         },
       });
       anim.play();
+
+      return newScale;
     },
     [stageRef, scaleBy, stopInertia],
   );

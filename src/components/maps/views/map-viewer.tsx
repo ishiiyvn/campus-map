@@ -7,7 +7,7 @@ import { Area, Category, PointOfInterest, Layer as DbLayer, Level } from "@/serv
 import { MapOutput } from "@/lib/validators/map";
 
 // server actions
-import { updateArea as updateAreaAction, reorderAreasInLayer } from "@/server/actions/areas";
+import { createArea, updateArea as updateAreaAction, reorderAreasInLayer } from "@/server/actions/areas";
 
 // components
 import { PoiLayer } from "@/components/pois/layers/poi-layer";
@@ -23,11 +23,14 @@ import Konva from "konva";
 
 // hooks
 import { useCallback, useRef, useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 import { useStageZoom } from "@/components/maps/hooks/use-stage-zoom";
 import { usePoiInteractions } from "@/components/maps/hooks/use-poi-interactions";
 import { useStageSize } from "@/components/maps/hooks/use-stage-size";
 import { useAreaDraft } from "@/components/areas/hooks/use-area-draft";
+import { useCircleDraft } from "@/components/areas/hooks/use-circle-draft";
 import { useAreaEdit } from "@/components/areas/hooks/use-area-edit";
 import { useAreaActions } from "@/components/areas/hooks/use-area-actions";
 import { useMapAreasState } from "@/components/areas/hooks/use-map-areas-state";
@@ -61,6 +64,8 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   // readOnly is currently unused but kept for interface compatibility
   void readOnly;
 
+  const router = useRouter();
+
   // Suppress known non-critical Konva canvas error
   useEffect(() => {
     const originalError = console.error;
@@ -79,11 +84,12 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(containerRef);
-  const { stageScale, isDraggingRef, updateScaleFromStage, getPointerMapPosition } = useMapStage(stageRef, {
+  const { stageScale, isDraggingRef, updateScaleFromStage, updateScale, getPointerMapPosition } = useMapStage(stageRef, {
     width: stageSize.width,
     height: stageSize.height,
   });
-  const pointRadius = Math.max(4, 6 / stageScale);
+  const pointRadius = Math.max(2, 6 / stageScale);
+  const dashArray: [number, number] = [8 / Math.sqrt(stageScale), 6 / Math.sqrt(stageScale)];
   const {
     draftAreaPoints,
     draftAreaPointsFlat,
@@ -98,6 +104,23 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     openDraftDialogIfValid,
     undoDraft,
   } = useAreaDraft();
+
+  const [drawMode, setDrawMode] = useState<"polygon" | "circle">("polygon");
+
+  const {
+    center: circleCenter,
+    radius: circleRadius,
+    hasCircle,
+    circlePoints: circleDraftPoints,
+    circlePointsFlat: circleDraftPointsFlat,
+    startCircle,
+    updateRadius,
+    finishDragging: finishCircleDragging,
+    moveCircleBy,
+    resetCircle: resetCircleDraft,
+    getCirclePoints,
+    validate: validateCircle,
+  } = useCircleDraft();
   const {
     editingAreaId,
     editingPoints,
@@ -239,14 +262,18 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   // State for edit mode and tools
   const addDraftPointHandler = useCallback((point: { x: number; y: number }) => {
-    addDraftPoint(point);
-  }, [addDraftPoint]);
+    if (drawMode === "circle") {
+      startCircle(point);
+    } else {
+      addDraftPoint(point);
+    }
+  }, [addDraftPoint, drawMode, startCircle]);
 
   const poiInteractions = usePoiInteractions(stageRef, {
     onAreaPointAdd: addDraftPointHandler,
   });
 
-  const isDraftActive = draftAreaPoints.length > 0;
+  const isDraftActive = draftAreaPoints.length > 0 || hasCircle;
 
   const requestToolChange = useCallback((tool: "select" | "add_poi" | "add_area") => {
     if (tool === poiInteractions.activeTool) return;
@@ -285,7 +312,7 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   const { onWheel, setScale, minZoom, maxZoom, handleDragEnd: onStageDragEnd } = useStageZoom({
     stageRef,
     viewportConfig: mapData.viewport_config,
-    onScaleUpdate: updateScaleFromStage,
+    onScaleUpdate: updateScale,
   });
 
   const areaLines = useMemo(() => buildAreaRenderData(mapAreas), [mapAreas]);
@@ -308,7 +335,11 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   }, [pois, selectedLevelId, poiCoords, poiVisibility]);
 
   const handleDraftFinish = () => {
-    openDraftDialogIfValid(() => setIsAreaDialogOpen(true));
+    if (drawMode === "circle") {
+      handleDraftFinishAuto();
+    } else {
+      openDraftDialogIfValid(() => setIsAreaDialogOpen(true));
+    }
   };
 
   const handleEditUndo = () => {
@@ -321,11 +352,78 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   const handleDraftCancel = () => {
     resetDraft();
+    resetCircleDraft();
   };
 
   const handleEditCancel = () => {
     cancelEditing();
   };
+
+  const handleDraftFinishAuto = useCallback(async () => {
+    let polygonCoordinates;
+
+    if (drawMode === "circle") {
+      if (!validateCircle()) return;
+      polygonCoordinates = getCirclePoints(36);
+    } else {
+      if (draftAreaPoints.length < 3) {
+        toast.error("Agrega al menos 3 puntos para crear un área");
+        return;
+      }
+      polygonCoordinates = draftAreaPoints;
+    }
+
+    try {
+      const areaCount = mapAreas.length;
+      const newArea = await createArea({
+        name: `Área ${areaCount + 1}`,
+        code: `area-${areaCount + 1}`,
+        description: "",
+        map_id: mapData.id!,
+        polygon_coordinates: polygonCoordinates,
+      });
+
+      addArea(newArea as Area);
+      resetDraft();
+      resetCircleDraft();
+      setDrawMode("polygon");
+      poiInteractions.setActiveTool("select");
+      toast.success("Área creada");
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al crear el área");
+    }
+  }, [draftAreaPoints, drawMode, getCirclePoints, validateCircle, mapAreas, mapData.id, addArea, resetDraft, resetCircleDraft, poiInteractions, router]);
+
+  const handleEditFinishAuto = useCallback(async () => {
+    if (editingAreaId === null || editingPoints.length < 3) {
+      toast.error("Agrega al menos 3 puntos para guardar el área");
+      return;
+    }
+
+    const area = mapAreas.find((a) => a.id === editingAreaId);
+    if (!area) return;
+
+    try {
+      const updated = await updateAreaAction(editingAreaId, {
+        name: area.name,
+        code: area.code,
+        description: area.description,
+        map_id: area.map_id,
+        layer_id: area.layer_id,
+        polygon_coordinates: editingPoints,
+      });
+
+      updateAreaState(updated as Area);
+      cancelEditing();
+      toast.success("Área actualizada");
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al actualizar el área");
+    }
+  }, [editingAreaId, editingPoints, mapAreas, updateAreaState, cancelEditing, router]);
 
   const { toolbar, hints, areaUi, isMobile: overlayIsMobile } = useMapOverlaysProps({
     mapId: mapData.id!,
@@ -342,6 +440,16 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     editPoints: editingPoints,
     draftUndoStack,
     editingUndoStack,
+    drawMode,
+    onDrawModeChange: (mode) => {
+      setDrawMode(mode);
+      // Reset draft when switching modes
+      if (mode === "circle") {
+        resetDraft();
+      } else {
+        resetCircleDraft();
+      }
+    },
     isCreateOpen: isAreaDialogOpen,
     isEditOpen: isEditAreaDialogOpen,
     isDeleteOpen: isDeleteDialogOpen,
@@ -355,6 +463,7 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     onDraftCancel: handleDraftCancel,
     onEditUndo: handleEditUndo,
     onEditCancel: handleEditCancel,
+    onEditFinishAuto: handleEditFinishAuto,
     onStartEditingArea: startEditingArea,
     onOpenEditInfo: openEditInfo,
     onSetEditSnapshot: setEditingAreaSnapshot,
@@ -394,6 +503,19 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     endDraftDrag,
     endEditingDrag,
   });
+
+  const handleCircleDragEnd = useCallback((event: Konva.KonvaEventObject<DragEvent>) => {
+    const node = event.target;
+    const dx = node.x();
+    const dy = node.y();
+    if (dx !== 0 || dy !== 0) {
+      moveCircleBy(dx, dy);
+      node.position({ x: 0, y: 0 });
+    }
+    isDraggingRef.current = false;
+    setCursor("crosshair");
+    endDraftDrag();
+  }, [moveCircleBy, setCursor, endDraftDrag]);
 
   const { onDraftDragStart, onEditDragStart } = useMapInteractions({
     isDraggingRef,
@@ -476,6 +598,11 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               draftPoints: draftAreaPoints,
               draftPointsFlat: draftAreaPointsFlat,
               pointRadius,
+              dashArray,
+              circleCenter,
+              circleRadius,
+              circlePointsFlat: circleDraftPointsFlat,
+              drawMode,
             }}
             flags={{
               isEditMode: poiInteractions.isEditMode,
@@ -555,6 +682,20 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
                 isDraggingRef.current = false;
                 setCursor("crosshair");
                 endDraftDrag();
+              },
+              onCircleRadiusHandleDrag: (point) => {
+                updateRadius(point);
+              },
+              onCircleRadiusHandleDragEnd: () => {
+                finishCircleDragging();
+              },
+              onCircleGroupDragStart: () => {
+                onDraftDragStart();
+                beginDraftDrag();
+              },
+              onCircleGroupDragEnd: handleCircleDragEnd,
+              onCircleGroupDragMove: () => {
+                setCursor("grabbing");
               },
               onSetCursor: setCursor,
             }}

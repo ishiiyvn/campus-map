@@ -16,7 +16,7 @@ export function AreaItem({ area }: AreaItemProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: area.id });
+  } =     useSortable({ id: `area-${area.id}` });
 
   const style = {
     transform: CSS.Transform.toString(transform),

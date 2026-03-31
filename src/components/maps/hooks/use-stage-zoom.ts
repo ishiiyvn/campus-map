@@ -7,7 +7,7 @@ import { useSmoothZoom } from "@/components/maps/hooks/use-smooth-zoom";
 interface UseStageZoomOptions {
   stageRef: React.RefObject<Konva.Stage | null>;
   viewportConfig: { zoom: number; center: [number, number]; minzoom?: number; maxzoom?: number };
-  onScaleUpdate: () => void;
+  onScaleUpdate: (newScale: number) => void;
 }
 
 export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseStageZoomOptions) {
@@ -15,8 +15,10 @@ export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseSta
 
   const onWheel = useCallback(
     (event: Konva.KonvaEventObject<WheelEvent>) => {
-      handleWheel(event);
-      onScaleUpdate();
+      const newScale = handleWheel(event);
+      if (newScale !== null) {
+        onScaleUpdate(newScale);
+      }
     },
     [handleWheel, onScaleUpdate]
   );

@@ -1,5 +1,5 @@
 import { getLayers } from "@/server/queries/layers";
-import AddLayerForm from "@/components/layers/forms/layer-form-fields";
+import AddLayerForm from "@/components/layers/forms/add-layer-form";
 import { LayersList } from "@/components/layers/layers-list";
 
 export default async function LayersPage() {

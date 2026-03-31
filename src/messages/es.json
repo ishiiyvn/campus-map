@@ -19,6 +19,37 @@
     "toolAddPoi": "Añadir marcador",
     "toolAddArea": "Añadir área"
   },
+  "layers": {
+    "title": "Capas",
+    "newLayer": "Nueva Capa",
+    "noLayers": "No hay capas todavía.",
+    "noLayersHint": "Crea una para comenzar.",
+    "dragAreasHere": "Arrastra áreas aquí",
+    "deleteTitle": "Eliminar capa",
+    "deleteConfirm": "¿Estás seguro que quieres eliminar la capa \"{name}\"?",
+    "deleteSuccess": "Capa eliminada exitosamente",
+    "deleteError": "Error al eliminar la capa",
+    "createSuccess": "Capa creada exitosamente",
+    "createError": "Error al crear la capa",
+    "updateSuccess": "Capa actualizada",
+    "updateError": "Error al actualizar la capa",
+    "save": "Guardar",
+    "cancel": "Cancelar"
+  },
+  "levels": {
+    "title": "Niveles",
+    "add": "Añadir",
+    "deleteTitle": "Eliminar nivel",
+    "deleteConfirm": "¿Estás seguro que quieres eliminar este nivel?",
+    "deleteSuccess": "Nivel eliminado",
+    "deleteError": "Error al eliminar el nivel",
+    "addSuccess": "Nivel añadido",
+    "addError": "Error al añadir el nivel",
+    "updateSuccess": "Nivel actualizado",
+    "updateError": "Error al actualizar el nivel",
+    "reorderError": "Error al guardar el orden",
+    "namePlaceholder": "Nombre del nivel (ej: Planta baja, Piso 1)"
+  },
   "areas": {
     "controls": {
       "finish": "Finalizar área",
@@ -35,11 +66,14 @@
       "editPolygon": "Editar polígono",
       "editInfo": "Editar información",
       "delete": "Eliminar área",
-      "deleteConfirm": "¿Estás seguro de que quieres eliminar esta área?"
+      "deleteConfirm": "¿Estás seguro que quieres eliminar esta área?"
     },
     "addForm": {
       "levelsHint": "Los niveles se podrán agregar después de crear el área."
-    }
+    },
+    "deleteTitle": "Eliminar área",
+    "deleteSuccess": "Área eliminada exitosamente",
+    "deleteError": "Error al eliminar el área"
   },
   "map": {
     "hints": {
@@ -54,7 +88,7 @@
     "add": "Añadir categoría",
     "addTitle": "Añadir nueva categoría",
     "editTitle": "Editar categoría",
-    "deleteConfirm": "¿Estás seguro de que quieres eliminar esta categoría?",
+    "deleteConfirm": "¿Estás seguro que quieres eliminar esta categoría?",
     "name": "Nombre",
     "namePlaceholder": "Nombre de la categoría",
     "description": "Descripción",
@@ -79,7 +113,7 @@
     "edit": "Editar",
     "reposition": "Reposicionar",
     "delete": "Eliminar",
-    "deleteConfirm": "¿Estás seguro de que quieres eliminar este punto de interés?",
+    "deleteConfirm": "¿Estás seguro que quieres eliminar este punto de interés?",
     "deleteSuccess": "Punto de interés eliminado exitosamente",
     "deleteError": "Error al eliminar el punto de interés",
     "addTitle": "Añadir nuevo punto de interés",

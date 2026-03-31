@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import PoiFormFields from "./poi-form-fields";
 import { useTranslations } from "next-intl";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface PoiWithLevels extends PointOfInterest {
   level_ids?: number[];
@@ -39,6 +40,7 @@ export default function EditPoiForm({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<PointOfInterestInput>({
     resolver: zodResolver(pointOfInterestSchema),
@@ -93,8 +95,6 @@ export default function EditPoiForm({
   }
 
   async function handleDelete() {
-    if (!confirm(t("deleteConfirm"))) return;
-
     try {
       setIsDeleting(true);
       await deletePointOfInterest(poi.id);
@@ -130,13 +130,20 @@ export default function EditPoiForm({
             type="button"
             variant="destructive"
             size="icon"
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             disabled={isLoading || isDeleting}
           >
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </Button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t("deleteConfirm")}
+        onConfirm={handleDelete}
+      />
     </Form>
   );
 }

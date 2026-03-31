@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteCategory } from "@/server/actions/categories";
 import { toast } from "sonner";
 import EditCategoryForm from "./forms/edit-category-form";
@@ -19,11 +20,11 @@ import { useTranslations } from "next-intl";
 
 function CategoryCard({ category }: { category: Category }) {
   const [open, setOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const IconComp = category.icon ? getIconComponent(category.icon) : null;
   const t = useTranslations("categories");
 
   async function handleDelete() {
-    if (!confirm(t("deleteConfirm"))) return;
     try {
       await deleteCategory(category.id!);
       toast.success(t("deleteSuccess"));
@@ -80,9 +81,16 @@ function CategoryCard({ category }: { category: Category }) {
             <EditCategoryForm category={category} onSuccess={() => setOpen(false)} />
           </DialogContent>
         </Dialog>
-        <Button variant="ghost" size="icon" onClick={handleDelete}>
+        <Button variant="ghost" size="icon" onClick={() => setShowDeleteConfirm(true)}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
+
+        <ConfirmDialog
+          open={showDeleteConfirm}
+          onOpenChange={setShowDeleteConfirm}
+          title={t("deleteConfirm")}
+          onConfirm={handleDelete}
+        />
       </div>
     </div>
   );
