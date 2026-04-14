@@ -6,7 +6,7 @@ import { UseFormReturn } from "react-hook-form";
 import { AreaInput } from "@/lib/validators";
 import { isAreaCodeAvailable } from "@/server/actions/areas";
 import slugify from "slugify";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Layer } from "@/server/db/schema";
 import {
   Select,
@@ -23,15 +23,14 @@ interface AreaFormFieldsProps {
 }
 
 export default function AreaFormFields({ form, initialCode, layers = [] }: AreaFormFieldsProps) {
-  const [codeTouched, setCodeTouched] = useState(false);
+  // Initialize touched state from the passed initialCode or the form's current value.
+  // Use a lazy initializer so getValues is only called once during initial render.
+  const [codeTouched, setCodeTouched] = useState<boolean>(() => {
+    if (typeof initialCode === "string" && initialCode.length > 0) return true;
+    const fromForm = form.getValues("code");
+    return !!fromForm;
+  });
   const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    const initialCode = form.getValues("code");
-    if (initialCode) {
-      setCodeTouched(true);
-    }
-  }, [form]);
 
   const generateCode = (name: string) => slugify(name, { lower: true, strict: true });
 

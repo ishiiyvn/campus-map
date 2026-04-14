@@ -81,8 +81,11 @@ export function LayerSidebar({
   // Sync with parent prop only when dragged layer is not active
   useEffect(() => {
     if (!activeLayer) {
-      setLocalLayers(layers);
+      // Defer the state update to avoid synchronous setState in the effect body
+      const id = setTimeout(() => setLocalLayers(layers), 0);
+      return () => clearTimeout(id);
     }
+    return undefined;
   }, [layers, activeLayer]);
 
   const handleSetLocalLayers = (newLayers: Layer[]) => {

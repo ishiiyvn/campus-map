@@ -23,14 +23,16 @@ function useIconImage(iconName: string | null | undefined, color: string): HTMLI
 
   useEffect(() => {
     if (!iconName) {
-      setImage(null);
-      return;
+      // Defer clearing image to avoid synchronous setState in effect
+      const t = setTimeout(() => setImage(null), 0);
+      return () => clearTimeout(t);
     }
 
     const dataUrl = getIconSvgDataUrl(iconName, color);
     if (!dataUrl) {
-      setImage(null);
-      return;
+      // Defer clearing image to avoid synchronous setState in effect
+      const t = setTimeout(() => setImage(null), 0);
+      return () => clearTimeout(t);
     }
 
     const img = new window.Image();

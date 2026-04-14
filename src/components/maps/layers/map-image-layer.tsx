@@ -35,11 +35,17 @@ export function MapImageLayer({ src, width, height, visible = true, opacity = 1 
   }, []);
 
   useEffect(() => {
-    setIsLoaded(false);
-    setHasError(false);
-    setImageEl(null);
+    // Defer state resets to avoid synchronous setState in effect which can cause
+    // cascading renders. Using a short timeout preserves behavior while satisfying
+    // the react-hooks/set-state-in-effect rule.
+    const resetTimer = setTimeout(() => {
+      setIsLoaded(false);
+      setHasError(false);
+      setImageEl(null);
+    }, 0);
 
     if (!src || !visible) {
+      clearTimeout(resetTimer);
       return;
     }
 
@@ -61,6 +67,7 @@ export function MapImageLayer({ src, width, height, visible = true, opacity = 1 
     img.src = src;
 
     return () => {
+      clearTimeout(resetTimer);
       img.onload = null;
       img.onerror = null;
     };

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { getIconComponent } from "@/components/ui/icon-picker";
 
 interface MuiSvgPath {

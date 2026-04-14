@@ -134,3 +134,69 @@ export function getIconComponent(name: string): React.ComponentType<{ className?
 }
 
 export { ICONS };
+
+// Render an icon by name. Declared at module scope to avoid creating components during
+// render in consumer components (which can trigger the `react-hooks/static-components` rule).
+export function IconByName({
+  name,
+  className,
+}: {
+  name?: string | null;
+  className?: string;
+}) {
+  if (!name) return null;
+  switch (name) {
+    case "Bathroom":
+      return <BathroomIcon className={className} />;
+    case "Classroom":
+      return <ClassroomIcon className={className} />;
+    case "Door":
+      return <DoorFrontIcon className={className} />;
+    case "Elevator":
+      return <ElevatorIcon className={className} />;
+    case "Gate":
+      return <GateIcon className={className} />;
+    case "Lab":
+      return <LabIcon className={className} />;
+    case "Library":
+      return <LibraryIcon className={className} />;
+    case "Office":
+      return <OfficeIcon className={className} />;
+    case "Parking":
+      return <ParkingIcon className={className} />;
+    case "Restaurant":
+      return <RestaurantIcon className={className} />;
+    case "Stairs":
+      return <StairsIcon className={className} />;
+    case "Wifi":
+      return <WifiIcon className={className} />;
+    case "Accessible":
+      return <AccessibleIcon className={className} />;
+    case "Cafeteria":
+      return <CafeteriaIcon className={className} />;
+    case "Computer":
+      return <ComputerIcon className={className} />;
+    case "Walking":
+      return <DirectionsWalkIcon className={className} />;
+    case "Seating":
+      return <EventSeatIcon className={className} />;
+    case "Gym":
+      return <FitnessIcon className={className} />;
+    case "Health":
+      return <LocalHospitalIcon className={className} />;
+    case "Meeting":
+      return <MeetingRoomIcon className={className} />;
+    case "Phone":
+      return <PhoneIcon className={className} />;
+    case "Place":
+      return <PlaceIcon className={className} />;
+    case "School":
+      return <SchoolIcon className={className} />;
+    case "Shower":
+      return <ShowerIcon className={className} />;
+    case "Work":
+      return <WorkIcon className={className} />;
+    default:
+      return null;
+  }
+}

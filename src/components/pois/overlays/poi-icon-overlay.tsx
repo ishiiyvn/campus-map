@@ -41,6 +41,7 @@ export function PoiIconOverlay({
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const rafRef = useRef<number | null>(null);
   const isDirtyRef = useRef(false);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -83,6 +84,19 @@ export function PoiIconOverlay({
       }
     };
   }, [stageRef]);
+
+  // Keep track of container size without reading the ref during render.
+  useEffect(() => {
+    const update = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      setContainerSize({ width: el.clientWidth, height: el.clientHeight });
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [containerRef]);
 
   useEffect(() => {
     if (!dragState) return;
@@ -155,8 +169,8 @@ export function PoiIconOverlay({
         if (
           x < -iconSize * 2 ||
           y < -iconSize * 2 ||
-          x > (containerRef.current?.clientWidth ?? 0) + iconSize * 2 ||
-          y > (containerRef.current?.clientHeight ?? 0) + iconSize * 2
+          x > containerSize.width + iconSize * 2 ||
+          y > containerSize.height + iconSize * 2
         ) {
           return null;
         }

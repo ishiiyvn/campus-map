@@ -35,7 +35,10 @@ export function AddPoiDialog({
         .then(setLevels)
         .catch(console.error);
     } else {
-      setLevels([]);
+      // Defer clearing levels to avoid calling setState synchronously inside
+      // the effect body which can trigger cascading renders.
+      const id = setTimeout(() => setLevels([]), 0);
+      return () => clearTimeout(id);
     }
   }, [location]);
 

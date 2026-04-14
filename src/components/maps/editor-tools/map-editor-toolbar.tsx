@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MapPinPlus, MousePointer2, VectorSquare, Eye, EyeOff, Layers, Image } from "lucide-react";
+import { MapPinPlus, MousePointer2, VectorSquare, Eye, EyeOff, Layers, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import type { Layer } from "@/server/db/schema";
@@ -118,7 +118,7 @@ export function MapEditorToolbar({
                 onClick={() => setShowOpacityPanel(!showOpacityPanel)}
                 title={`Opacidad: ${Math.round(imageOpacity * 100)}%`}
               >
-                <Image className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4" />
               </Button>
               {/* Opacity Slider Popup - aligned with visibility toggle */}
               {showOpacityPanel && (

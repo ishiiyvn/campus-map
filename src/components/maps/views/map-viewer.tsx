@@ -18,7 +18,7 @@ import { MapOverlays } from "@/components/maps/overlays/map-overlays";
 import { PoiSidebar } from "@/components/pois/sidebar/poi-sidebar";
 
 // konva components
-import { Stage, Layer } from "react-konva";
+import { Stage } from "react-konva";
 import Konva from "konva";
 
 // hooks
@@ -57,10 +57,11 @@ interface MapViewerProps {
   areas: Area[];
   layers?: DbLayer[];
   readOnly?: boolean;
+  levels?: Level[]; // provided by server wrapper
 }
 
 
-export default function MapViewer({ mapData, pois, categories, areas, layers = [], readOnly = true }: MapViewerProps) {
+export default function MapViewer({ mapData, pois, categories, areas, layers = [], readOnly = true, levels = [] }: MapViewerProps) {
   // readOnly is currently unused but kept for interface compatibility
   void readOnly;
 
@@ -170,21 +171,17 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   const [poiSidebarCollapsed, setPoiSidebarCollapsed] = useState(true);
   const [poiSearchQuery, setPoiSearchQuery] = useState("");
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
-  const [allLevels, setAllLevels] = useState<Level[]>([]);
+  const [allLevels, setAllLevels] = useState<Level[]>(levels);
   const [activePoiMenu, setActivePoiMenu] = useState<{ poi: PointOfInterest; position: { x: number; y: number } } | null>(null);
   const [activeAreaMenu, setActiveAreaMenu] = useState<{ areaId: number; position: { x: number; y: number } } | null>(null);
   const [repositionPoiId, setRepositionPoiId] = useState<number | null>(null);
   const [repositioning, setRepositioning] = useState(false);
   const [poiCoords, setPoiCoords] = useState<Record<number, { x: number; y: number }>>({});
 
-  // Fetch all levels for level selector
+  // If levels prop ever changes, sync local state
   useEffect(() => {
-    import("@/server/actions/levels").then(({ getAllLevels }) => {
-      getAllLevels()
-        .then(setAllLevels)
-        .catch(console.error);
-    });
-  }, []);
+    setAllLevels(levels);
+  }, [levels]);
 
   // Initialize POI visibility from categories
   useEffect(() => {
@@ -239,7 +236,7 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     } catch (error) {
       console.error("Error moving area to layer:", error);
     }
-  }, []);
+  }, [updateAreaState]);
 
   const handleReorderAreasInLayer = useCallback(async (layerId: number, orderedAreaIds: number[]) => {
     try {
@@ -515,7 +512,7 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     isDraggingRef.current = false;
     setCursor("crosshair");
     endDraftDrag();
-  }, [moveCircleBy, setCursor, endDraftDrag]);
+  }, [moveCircleBy, setCursor, endDraftDrag, isDraggingRef]);
 
   const { onDraftDragStart, onEditDragStart } = useMapInteractions({
     isDraggingRef,
@@ -612,9 +609,9 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               onAreaContextMenu: (areaId, screenPos) => {
                 if (!containerRef.current) return;
                 const rect = containerRef.current.getBoundingClientRect();
-                setActiveAreaMenu({ 
-                  areaId, 
-                  position: { x: screenPos.x - rect.left, y: screenPos.y - rect.top } 
+                setActiveAreaMenu({
+                  areaId,
+                  position: { x: screenPos.x - rect.left, y: screenPos.y - rect.top }
                 });
               },
               onAreaClick: (areaId, event) => {
@@ -838,42 +835,9 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
             setIsDraftGuardOpen(false);
           }}
         />
-
-        <DraftToolSwitchDialog
-          open={isDraftGuardOpen}
-          onOpenChange={setIsDraftGuardOpen}
-          onKeepEditing={() => {
-            setPendingAction(null);
-            setIsDraftGuardOpen(false);
-            if (!poiInteractions.isEditMode) {
-              poiInteractions.setIsEditMode(true);
-            }
-            if (poiInteractions.activeTool !== "add_area") {
-              poiInteractions.setActiveTool("add_area");
-            }
-          }}
-          onDiscard={() => {
-            resetDraft();
-            if (pendingAction?.type === "tool") {
-              poiInteractions.setActiveTool(pendingAction.tool);
-            }
-            setPendingAction(null);
-            setIsDraftGuardOpen(false);
-          }}
-        />
       </div>
 
-      <LayerSidebar
-        mapId={mapData.id!}
-        layers={mapLayers}
-        areas={mapAreas}
-        isOpen={isLayerSidebarOpen}
-        onClose={() => setIsLayerSidebarOpen(false)}
-        onToggleLayerVisibility={toggleLayerVisibility}
-        onMoveAreaToLayer={handleMoveAreaToLayer}
-        onReorderAreasInLayer={handleReorderAreasInLayer}
-        onReorderLayers={handleReorderLayers}
-      />
+      {/* LayerSidebar is rendered inside the main map container; no duplicate here */}
 
       <MapOverlays
         isMobile={overlayIsMobile}

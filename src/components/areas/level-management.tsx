@@ -154,20 +154,20 @@ export function LevelManagement({ areaId, className }: LevelManagementProps) {
   );
 
   useEffect(() => {
-    loadLevels();
-  }, [areaId]);
-
-  async function loadLevels() {
-    try {
-      setIsLoading(true);
-      const data = await getLevelsByArea(areaId);
-      setLevels(data);
-    } catch (error) {
-      console.error("Error loading levels:", error);
-    } finally {
-      setIsLoading(false);
+    async function load() {
+      try {
+        setIsLoading(true);
+        const data = await getLevelsByArea(areaId);
+        setLevels(data);
+      } catch (error) {
+        console.error("Error loading levels:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }
+
+    load();
+  }, [areaId]);
 
   async function handleAddLevel() {
     if (!newLevelName.trim()) return;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Category } from "@/server/db/schema";
-import { getIconComponent } from "@/components/ui/icon-picker";
+import { IconByName } from "@/components/ui/icon-picker";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,8 @@ import { useTranslations } from "next-intl";
 function CategoryCard({ category }: { category: Category }) {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const IconComp = category.icon ? getIconComponent(category.icon) : null;
+  // No longer create component types during render. Use IconByName which
+  // returns an element and keeps icon component types at module scope.
   const t = useTranslations("categories");
 
   async function handleDelete() {
@@ -42,9 +43,9 @@ function CategoryCard({ category }: { category: Category }) {
           className="w-10 h-10 rounded-md flex items-center justify-center"
           style={{ backgroundColor: category.color ? `${category.color}20` : "#f3f4f6" }}
         >
-          {IconComp ? (
+          {category.icon ? (
             <div style={{ color: category.color || undefined }}>
-              <IconComp className="w-5 h-5" />
+              <IconByName name={category.icon} className="w-5 h-5" />
             </div>
           ) : (
             <span className="text-sm font-medium">{category.name.charAt(0)}</span>

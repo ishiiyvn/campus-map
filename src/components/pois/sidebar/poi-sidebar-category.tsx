@@ -2,7 +2,7 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { Category } from "@/server/db/schema";
-import { getIconComponent } from "@/components/ui/icon-picker";
+import { IconByName } from "@/components/ui/icon-picker";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,9 @@ export function PoiSidebarCategory({
   isVisible,
   onToggle,
 }: PoiSidebarCategoryProps) {
-  const IconComponent = category.icon ? getIconComponent(category.icon) : null;
+  // Use a stable module-scoped renderer to avoid creating component types during render
+  // (prevents react-hooks/static-components lint rule).
+  const iconName = category.icon ?? null;
 
   return (
     <Button
@@ -40,9 +42,9 @@ export function PoiSidebarCategory({
             : undefined
         }
       >
-        {IconComponent ? (
+        {iconName ? (
           <div style={category.color ? { color: category.color } : undefined}>
-            <IconComponent className="w-4 h-4" />
+            <IconByName name={iconName} className="w-4 h-4" />
           </div>
         ) : (
           <span className="text-xs font-medium">

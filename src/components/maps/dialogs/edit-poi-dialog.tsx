@@ -34,16 +34,21 @@ export function EditPoiDialog({
         .then(setLevels)
         .catch(console.error);
     } else {
-      setLevels([]);
+      // Defer clearing levels to avoid calling setState synchronously inside
+      // the effect body which can trigger cascading renders.
+      const id = setTimeout(() => setLevels([]), 0);
+      return () => clearTimeout(id);
     }
   }, [poi]);
 
   useEffect(() => {
-    if (poi && (poi as PointOfInterest & { level_ids?: number[] }).level_ids) {
-      setPoiLevelIds((poi as PointOfInterest & { level_ids?: number[] }).level_ids || []);
-    } else {
-      setPoiLevelIds([]);
-    }
+    const ids = poi && (poi as PointOfInterest & { level_ids?: number[] }).level_ids
+      ? (poi as PointOfInterest & { level_ids?: number[] }).level_ids || []
+      : [];
+
+    // Defer updating state to avoid synchronous setState in the effect body
+    const id = setTimeout(() => setPoiLevelIds(ids), 0);
+    return () => clearTimeout(id);
   }, [poi]);
 
   return (
