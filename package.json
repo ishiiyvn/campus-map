@@ -50,7 +50,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^2.11.1",
+    "@eslint/eslintrc": "^3.3.5",
     "@next/eslint-plugin-next": "16.1.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

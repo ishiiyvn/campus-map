@@ -3,8 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Category, Level, Area, PointOfInterest } from "@/server/db/schema";
-import { updatePointOfInterest, deletePointOfInterest } from "@/server/actions/pois";
-import { PointOfInterestInput, pointOfInterestSchema } from "@/lib/validators/poi";
+import {
+  updatePointOfInterest,
+  deletePointOfInterest,
+} from "@/server/actions/pois";
+import {
+  PointOfInterestInput,
+  pointOfInterestSchema,
+} from "@/lib/validators/poi";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -84,7 +90,7 @@ export default function EditPoiForm({
       setIsLoading(true);
       await updatePointOfInterest(poi.id, values);
       toast.success(t("updateSuccess"));
-      router.refresh();
+      // Notify parent to update UI instead of performing a full page refresh
       onSuccess?.();
     } catch (error) {
       console.error(error);
@@ -99,7 +105,7 @@ export default function EditPoiForm({
       setIsDeleting(true);
       await deletePointOfInterest(poi.id);
       toast.success(t("deleteSuccess"));
-      router.refresh();
+      // Notify parent to update UI instead of performing a full page refresh
       onSuccess?.();
     } catch (error) {
       console.error(error);
@@ -121,7 +127,11 @@ export default function EditPoiForm({
         />
 
         <div className="flex gap-2">
-          <Button type="submit" className="flex-1" disabled={isLoading || isDeleting}>
+          <Button
+            type="submit"
+            className="flex-1"
+            disabled={isLoading || isDeleting}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("save")}
           </Button>
@@ -133,7 +143,11 @@ export default function EditPoiForm({
             onClick={() => setShowDeleteConfirm(true)}
             disabled={isLoading || isDeleting}
           >
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,7 +24,11 @@ import {
   Active,
   Over,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Plus, X, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LayerSidebarProps } from "./layer-sidebar/types";
@@ -33,7 +38,10 @@ import { useAreaDrag } from "./layer-sidebar/use-area-drag";
 import { reorderLayers, deleteLayer } from "@/server/actions/layers";
 import { Layer } from "@/server/db/schema";
 
-function createLayerCollisionDetection(layerIds: number[], activeLayerId: number | null): CollisionDetection {
+function createLayerCollisionDetection(
+  layerIds: number[],
+  activeLayerId: number | null,
+): CollisionDetection {
   const areaIdRegex = /^area-\d+$/;
   const layerSortRegex = /^layer-\d+$/;
   const layerDropRegex = /^layer-drop-\d+$/;
@@ -71,7 +79,10 @@ export function LayerSidebar({
   const [expandedLayers, setExpandedLayers] = useState<Set<number>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<number | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ layerId: number; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    layerId: number;
+    name: string;
+  } | null>(null);
   const [localLayers, setLocalLayers] = useState(layers);
   const [activeLayer, setActiveLayer] = useState<Layer | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -97,10 +108,16 @@ export function LayerSidebar({
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
-  const { activeArea, localAreas, handleDragStart: handleAreaDragStart, handleDragOver: handleAreaDragOver, handleDragEnd: handleAreaDragEnd } = useAreaDrag({
+  const {
+    activeArea,
+    localAreas,
+    handleDragStart: handleAreaDragStart,
+    handleDragOver: handleAreaDragOver,
+    handleDragEnd: handleAreaDragEnd,
+  } = useAreaDrag({
     areas,
     onMoveAreaToLayer,
     onReorderAreasInLayer,
@@ -164,12 +181,18 @@ export function LayerSidebar({
     const overId = String(over.id);
 
     // Layer drag end
-    if (draggedLayer && activeId.startsWith("layer-") && overId.startsWith("layer-")) {
+    if (
+      draggedLayer &&
+      activeId.startsWith("layer-") &&
+      overId.startsWith("layer-")
+    ) {
       const targetLayerId = Number(overId.replace("layer-", ""));
 
       // Find the original indices from the layers prop (before any drag-over updates)
       const originalLayers = layers;
-      const oldIndex = originalLayers.findIndex((l) => l.id === draggedLayer.id);
+      const oldIndex = originalLayers.findIndex(
+        (l) => l.id === draggedLayer.id,
+      );
       const newIndex = originalLayers.findIndex((l) => l.id === targetLayerId);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
@@ -204,16 +227,21 @@ export function LayerSidebar({
   const measuring = {
     droppable: {
       strategy: MeasuringStrategy.BeforeDragging,
-    }
+    },
   };
-  return (
+  const sidebarJsx = (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/20 z-[70]" onClick={onClose} />}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/20 z-[70]" onClick={onClose} />
+      )}
 
       <DndContext
         sensors={sensors}
         measuring={measuring}
-        collisionDetection={createLayerCollisionDetection(localLayers.map(l => l.id), activeLayer?.id ?? null)}
+        collisionDetection={createLayerCollisionDetection(
+          localLayers.map((l) => l.id),
+          activeLayer?.id ?? null,
+        )}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -222,7 +250,7 @@ export function LayerSidebar({
           className={cn(
             "fixed right-0 top-0 h-full w-[26rem] bg-white shadow-lg z-[70] flex flex-col overflow-visible",
             isOpen ? "translate-x-0" : "translate-x-full",
-            "transition-transform duration-200 ease-in-out"
+            "transition-transform duration-200 ease-in-out",
           )}
         >
           {/* Header */}
@@ -236,9 +264,17 @@ export function LayerSidebar({
           {/* New Layer Button/Form */}
           <div className="p-4 border-b">
             {isCreateDialogOpen ? (
-              <AddLayerForm mapId={mapId} onSubmitCallback={() => setIsCreateDialogOpen(false)} onCancel={() => setIsCreateDialogOpen(false)} />
+              <AddLayerForm
+                mapId={mapId}
+                onSubmitCallback={() => setIsCreateDialogOpen(false)}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
             ) : (
-              <Button variant="outline" className="w-full" onClick={() => setIsCreateDialogOpen(true)}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Capa
               </Button>
@@ -247,7 +283,10 @@ export function LayerSidebar({
 
           {/* Layers */}
           <div className="flex-1 overflow-y-auto">
-            <SortableContext items={sortedLayers.map((l) => `layer-${l.id}`)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={sortedLayers.map((l) => `layer-${l.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
               {sortedLayers.map((layer) => (
                 <LayerSection
                   key={layer.id}
@@ -262,14 +301,18 @@ export function LayerSidebar({
                     setEditingLayerId(layer.id);
                     setExpandedLayers((prev) => new Set(prev).add(layer.id));
                   }}
-                  onDelete={() => setDeleteConfirm({ layerId: layer.id, name: layer.name })}
-                  editContent={editingLayerId === layer.id ? (
-                    <EditLayerForm
-                      layer={layer}
-                      onSubmitCallback={() => setEditingLayerId(null)}
-                      onCancel={() => setEditingLayerId(null)}
-                    />
-                  ) : undefined}
+                  onDelete={() =>
+                    setDeleteConfirm({ layerId: layer.id, name: layer.name })
+                  }
+                  editContent={
+                    editingLayerId === layer.id ? (
+                      <EditLayerForm
+                        layer={layer}
+                        onSubmitCallback={() => setEditingLayerId(null)}
+                        onCancel={() => setEditingLayerId(null)}
+                      />
+                    ) : undefined
+                  }
                 />
               ))}
             </SortableContext>
@@ -290,7 +333,9 @@ export function LayerSidebar({
           {activeLayer ? (
             <div className="p-3 bg-white border rounded flex items-center gap-2 cursor-grabbing shadow-lg scale-105">
               <GripVertical className="h-4 w-4 text-gray-300 flex-shrink-0" />
-              <span className="text-sm font-medium truncate">{activeLayer.name}</span>
+              <span className="text-sm font-medium truncate">
+                {activeLayer.name}
+              </span>
             </div>
           ) : activeArea ? (
             <div className="p-2 bg-white border rounded flex items-center gap-2 cursor-grabbing shadow-lg scale-105">
@@ -305,7 +350,11 @@ export function LayerSidebar({
         open={deleteConfirm !== null}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
         title={t("deleteTitle")}
-        description={deleteConfirm ? t("deleteConfirm", { name: deleteConfirm.name }) : undefined}
+        description={
+          deleteConfirm
+            ? t("deleteConfirm", { name: deleteConfirm.name })
+            : undefined
+        }
         onConfirm={async () => {
           if (deleteConfirm) {
             try {
@@ -319,4 +368,9 @@ export function LayerSidebar({
       />
     </>
   );
+
+  if (typeof document !== "undefined") {
+    return createPortal(sidebarJsx, document.body);
+  }
+  return sidebarJsx;
 }

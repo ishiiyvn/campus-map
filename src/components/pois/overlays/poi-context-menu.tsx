@@ -19,9 +19,15 @@ interface PoiContextMenuProps {
   children: React.ReactNode;
   poi: PointOfInterest;
   onEdit: () => void;
+  onDeleted?: (id: number) => void;
 }
 
-export function PoiContextMenu({ children, poi, onEdit }: PoiContextMenuProps) {
+export function PoiContextMenu({
+  children,
+  poi,
+  onEdit,
+  onDeleted,
+}: PoiContextMenuProps) {
   const t = useTranslations("poi");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -29,7 +35,8 @@ export function PoiContextMenu({ children, poi, onEdit }: PoiContextMenuProps) {
     try {
       await deletePointOfInterest(poi.id!);
       toast.success(t("deleteSuccess"));
-      window.location.reload();
+      // Notify parent to update UI instead of reloading the page
+      onDeleted?.(poi.id!);
     } catch (error) {
       console.error(error);
       toast.error(t("deleteError"));
@@ -46,7 +53,10 @@ export function PoiContextMenu({ children, poi, onEdit }: PoiContextMenuProps) {
             {t("edit")}
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-destructive focus:text-destructive">
+          <ContextMenuItem
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-destructive focus:text-destructive"
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             {t("delete")}
           </ContextMenuItem>

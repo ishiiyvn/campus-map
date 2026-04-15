@@ -14,6 +14,7 @@ interface PoiActionMenuProps {
   onClose: () => void;
   onEdit: () => void;
   onReposition: () => void;
+  onDeleted?: (id: number) => void;
 }
 
 export function PoiActionMenu({
@@ -22,6 +23,7 @@ export function PoiActionMenu({
   onClose,
   onEdit,
   onReposition,
+  onDeleted
 }: PoiActionMenuProps) {
   const t = useTranslations("poi");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -31,7 +33,7 @@ export function PoiActionMenu({
     const handleClickOutside = (event: MouseEvent) => {
       // Don't close if the delete confirmation dialog is open
       if (showDeleteConfirm) return;
-      
+
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
       }
@@ -51,7 +53,9 @@ export function PoiActionMenu({
     try {
       await deletePointOfInterest(poi.id!);
       toast.success(t("deleteSuccess"));
-      window.location.reload();
+      // Notify parent to update UI without a full reload
+      onDeleted?.(poi.id!);
+      onClose();
     } catch (error) {
       console.error(error);
       toast.error(t("deleteError"));

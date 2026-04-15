@@ -14,6 +14,8 @@ interface PoiDialogsProps {
   onCloseNewPoi: () => void;
   onCloseEditPoi: () => void;
   onCloseEditPoiFromContext: () => void;
+  // Parent can supply this to be notified when a POI is deleted/updated so it can update UI without reload
+  onDeleted?: (id: number) => void;
 }
 
 export function PoiDialogs({
@@ -26,6 +28,7 @@ export function PoiDialogs({
   onCloseNewPoi,
   onCloseEditPoi,
   onCloseEditPoiFromContext,
+  onDeleted,
 }: PoiDialogsProps) {
   return (
     <>
@@ -38,21 +41,33 @@ export function PoiDialogs({
         onClose={onCloseNewPoi}
       />
 
-      <EditPoiDialog
-        open={!!activePoi}
-        poi={activePoi}
-        categories={categories}
-        areas={areas}
-        onClose={onCloseEditPoi}
-      />
+      {activePoi && (
+        <EditPoiDialog
+          open={!!activePoi}
+          poi={activePoi}
+          categories={categories}
+          areas={areas}
+          onClose={onCloseEditPoi}
+          // When EditPoiDialog signals success (update or delete), notify parent with this POI id
+          onSuccess={() => {
+            onDeleted?.(activePoi.id);
+          }}
+        />
+      )}
 
-      <EditPoiDialog
-        open={!!activePoiForEdit}
-        poi={activePoiForEdit}
-        categories={categories}
-        areas={areas}
-        onClose={onCloseEditPoiFromContext}
-      />
+      {activePoiForEdit && (
+        <EditPoiDialog
+          open={!!activePoiForEdit}
+          poi={activePoiForEdit}
+          categories={categories}
+          areas={areas}
+          onClose={onCloseEditPoiFromContext}
+          // When EditPoiDialog signals success (update or delete), notify parent with this POI id
+          onSuccess={() => {
+            onDeleted?.(activePoiForEdit.id);
+          }}
+        />
+      )}
     </>
   );
 }

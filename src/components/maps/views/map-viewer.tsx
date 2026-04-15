@@ -1,13 +1,23 @@
 "use client";
 
 // db
-import { Area, Category, PointOfInterest, Layer as DbLayer, Level } from "@/server/db/schema";
+import {
+  Area,
+  Category,
+  PointOfInterest,
+  Layer as DbLayer,
+  Level,
+} from "@/server/db/schema";
 
 // zod validators
 import { MapOutput } from "@/lib/validators/map";
 
 // server actions
-import { createArea, updateArea as updateAreaAction, reorderAreasInLayer } from "@/server/actions/areas";
+import {
+  createArea,
+  updateArea as updateAreaAction,
+  reorderAreasInLayer,
+} from "@/server/actions/areas";
 
 // components
 import { PoiLayer } from "@/components/pois/layers/poi-layer";
@@ -49,7 +59,6 @@ import { Button } from "@/components/ui/button";
 import { PanelRightIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-
 interface MapViewerProps {
   mapData: MapOutput;
   pois: PointOfInterest[];
@@ -60,8 +69,15 @@ interface MapViewerProps {
   levels?: Level[]; // provided by server wrapper
 }
 
-
-export default function MapViewer({ mapData, pois, categories, areas, layers = [], readOnly = true, levels = [] }: MapViewerProps) {
+export default function MapViewer({
+  mapData,
+  pois,
+  categories,
+  areas,
+  layers = [],
+  readOnly = true,
+  levels = [],
+}: MapViewerProps) {
   // readOnly is currently unused but kept for interface compatibility
   void readOnly;
 
@@ -85,12 +101,21 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(containerRef);
-  const { stageScale, isDraggingRef, updateScaleFromStage, updateScale, getPointerMapPosition } = useMapStage(stageRef, {
+  const {
+    stageScale,
+    isDraggingRef,
+    updateScaleFromStage,
+    updateScale,
+    getPointerMapPosition,
+  } = useMapStage(stageRef, {
     width: stageSize.width,
     height: stageSize.height,
   });
   const pointRadius = Math.max(2, 6 / stageScale);
-  const dashArray: [number, number] = [8 / Math.sqrt(stageScale), 6 / Math.sqrt(stageScale)];
+  const dashArray: [number, number] = [
+    8 / Math.sqrt(stageScale),
+    6 / Math.sqrt(stageScale),
+  ];
   const {
     draftAreaPoints,
     draftAreaPointsFlat,
@@ -157,26 +182,53 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
   const [isAreaDialogOpen, setIsAreaDialogOpen] = useState(false);
   const [isDraftGuardOpen, setIsDraftGuardOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<
-    { type: "tool"; tool: "select" | "add_poi" | "add_area" } | { type: "editModeOff" } | null
+    | { type: "tool"; tool: "select" | "add_poi" | "add_area" }
+    | { type: "editModeOff" }
+    | null
   >(null);
 
   // Layer visibility state
-  const [layerVisibility, setLayerVisibility] = useState<Record<number, boolean>>({});
+  const [layerVisibility, setLayerVisibility] = useState<
+    Record<number, boolean>
+  >({});
   const [imageVisible, setImageVisible] = useState(true);
   const [imageOpacity, setImageOpacity] = useState(1);
   const [isLayerSidebarOpen, setIsLayerSidebarOpen] = useState(false);
 
   // POI visibility state
-  const [poiVisibility, setPoiVisibility] = useState<Record<number, boolean>>({});
+  const [poiVisibility, setPoiVisibility] = useState<Record<number, boolean>>(
+    {},
+  );
   const [poiSidebarCollapsed, setPoiSidebarCollapsed] = useState(true);
   const [poiSearchQuery, setPoiSearchQuery] = useState("");
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
   const [allLevels, setAllLevels] = useState<Level[]>(levels);
-  const [activePoiMenu, setActivePoiMenu] = useState<{ poi: PointOfInterest; position: { x: number; y: number } } | null>(null);
-  const [activeAreaMenu, setActiveAreaMenu] = useState<{ areaId: number; position: { x: number; y: number } } | null>(null);
+  const [activePoiMenu, setActivePoiMenu] = useState<{
+    poi: PointOfInterest;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [activeAreaMenu, setActiveAreaMenu] = useState<{
+    areaId: number;
+    position: { x: number; y: number };
+  } | null>(null);
   const [repositionPoiId, setRepositionPoiId] = useState<number | null>(null);
   const [repositioning, setRepositioning] = useState(false);
-  const [poiCoords, setPoiCoords] = useState<Record<number, { x: number; y: number }>>({});
+  const [poiCoords, setPoiCoords] = useState<
+    Record<number, { x: number; y: number }>
+  >({});
+
+  // Local copy of POIs so we can update the UI immediately after a delete
+  const [localPois, setLocalPois] = useState<PointOfInterest[]>(pois);
+  useEffect(() => {
+    // Keep localPois in sync if the parent props change
+    setLocalPois(pois);
+  }, [pois]);
+
+  const handlePoiDeleted = useCallback((deletedId: number) => {
+    setLocalPois((prev) => prev.filter((p) => p.id !== deletedId));
+    // Close any open menus related to the deleted POI
+    setActivePoiMenu(null);
+  }, []);
 
   // If levels prop ever changes, sync local state
   useEffect(() => {
@@ -215,7 +267,12 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     }));
   }, []);
 
-  const { mapAreas, addArea, updateArea: updateAreaState, removeArea } = useMapAreasState(areas);
+  const {
+    mapAreas,
+    addArea,
+    updateArea: updateAreaState,
+    removeArea,
+  } = useMapAreasState(areas);
 
   const [mapLayers, setMapLayers] = useState<DbLayer[]>(layers);
 
@@ -227,44 +284,55 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     setMapLayers(orderedLayers);
   }, []);
 
-  const handleMoveAreaToLayer = useCallback(async (areaId: number, newLayerId: number | null) => {
-    try {
-      const updatedArea = await updateAreaAction(areaId, { layer_id: newLayerId });
-      if (updatedArea) {
-        updateAreaState(updatedArea);
-      }
-    } catch (error) {
-      console.error("Error moving area to layer:", error);
-    }
-  }, [updateAreaState]);
-
-  const handleReorderAreasInLayer = useCallback(async (layerId: number, orderedAreaIds: number[]) => {
-    try {
-      await reorderAreasInLayer(layerId, orderedAreaIds);
-
-      // Update local state with new display_order values
-      orderedAreaIds.forEach((areaId, index) => {
-        const area = mapAreas.find(a => a.id === areaId);
-        if (area) {
-          updateAreaState({ ...area, display_order: index });
+  const handleMoveAreaToLayer = useCallback(
+    async (areaId: number, newLayerId: number | null) => {
+      try {
+        const updatedArea = await updateAreaAction(areaId, {
+          layer_id: newLayerId,
+        });
+        if (updatedArea) {
+          updateAreaState(updatedArea);
         }
-      });
-    } catch (error) {
-      console.error("Error reordering areas in layer:", error);
-    }
-  }, [mapAreas, updateAreaState]);
+      } catch (error) {
+        console.error("Error moving area to layer:", error);
+      }
+    },
+    [updateAreaState],
+  );
+
+  const handleReorderAreasInLayer = useCallback(
+    async (layerId: number, orderedAreaIds: number[]) => {
+      try {
+        await reorderAreasInLayer(layerId, orderedAreaIds);
+
+        // Update local state with new display_order values
+        orderedAreaIds.forEach((areaId, index) => {
+          const area = mapAreas.find((a) => a.id === areaId);
+          if (area) {
+            updateAreaState({ ...area, display_order: index });
+          }
+        });
+      } catch (error) {
+        console.error("Error reordering areas in layer:", error);
+      }
+    },
+    [mapAreas, updateAreaState],
+  );
 
   // State for interaction
   const isMobile = useIsMobile();
 
   // State for edit mode and tools
-  const addDraftPointHandler = useCallback((point: { x: number; y: number }) => {
-    if (drawMode === "circle") {
-      startCircle(point);
-    } else {
-      addDraftPoint(point);
-    }
-  }, [addDraftPoint, drawMode, startCircle]);
+  const addDraftPointHandler = useCallback(
+    (point: { x: number; y: number }) => {
+      if (drawMode === "circle") {
+        startCircle(point);
+      } else {
+        addDraftPoint(point);
+      }
+    },
+    [addDraftPoint, drawMode, startCircle],
+  );
 
   const poiInteractions = usePoiInteractions(stageRef, {
     onAreaPointAdd: addDraftPointHandler,
@@ -272,15 +340,18 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   const isDraftActive = draftAreaPoints.length > 0 || hasCircle;
 
-  const requestToolChange = useCallback((tool: "select" | "add_poi" | "add_area") => {
-    if (tool === poiInteractions.activeTool) return;
-    if (isDraftActive && tool !== "add_area") {
-      setPendingAction({ type: "tool", tool });
-      setIsDraftGuardOpen(true);
-      return;
-    }
-    poiInteractions.setActiveTool(tool);
-  }, [isDraftActive, poiInteractions]);
+  const requestToolChange = useCallback(
+    (tool: "select" | "add_poi" | "add_area") => {
+      if (tool === poiInteractions.activeTool) return;
+      if (isDraftActive && tool !== "add_area") {
+        setPendingAction({ type: "tool", tool });
+        setIsDraftGuardOpen(true);
+        return;
+      }
+      poiInteractions.setActiveTool(tool);
+    },
+    [isDraftActive, poiInteractions],
+  );
 
   // Ensure edit mode is disabled on mobile
   useEffect(() => {
@@ -299,14 +370,25 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   useEffect(() => {
     const wasEditMode = wasEditModeRef.current;
-    if (wasEditMode && !poiInteractions.isEditMode && isDraftActive && !isDraftGuardOpen) {
+    if (
+      wasEditMode &&
+      !poiInteractions.isEditMode &&
+      isDraftActive &&
+      !isDraftGuardOpen
+    ) {
       setPendingAction({ type: "editModeOff" });
       setIsDraftGuardOpen(true);
     }
     wasEditModeRef.current = poiInteractions.isEditMode;
   }, [isDraftActive, isDraftGuardOpen, poiInteractions.isEditMode]);
 
-  const { onWheel, setScale, minZoom, maxZoom, handleDragEnd: onStageDragEnd } = useStageZoom({
+  const {
+    onWheel,
+    setScale,
+    minZoom,
+    maxZoom,
+    handleDragEnd: onStageDragEnd,
+  } = useStageZoom({
     stageRef,
     viewportConfig: mapData.viewport_config,
     onScaleUpdate: updateScale,
@@ -316,20 +398,29 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   type PoiWithLevels = PointOfInterest & { level_ids?: number[] };
   const filteredPois = useMemo(() => {
-    const basePois = selectedLevelId === null ? pois : (pois as PoiWithLevels[]).filter((poi) => {
-      const poiLevels = poi.level_ids || [];
-      return poiLevels.length === 0 || poiLevels.includes(selectedLevelId);
-    });
+    const basePois =
+      selectedLevelId === null
+        ? localPois
+        : (localPois as PoiWithLevels[]).filter((poi) => {
+            const poiLevels = poi.level_ids || [];
+            return (
+              poiLevels.length === 0 || poiLevels.includes(selectedLevelId)
+            );
+          });
     return basePois
       .filter((poi) => poiVisibility[poi.category_id] ?? true)
       .map((poi) => {
         const localCoords = poiCoords[poi.id];
         if (localCoords) {
-          return { ...poi, x_coordinate: localCoords.x, y_coordinate: localCoords.y };
+          return {
+            ...poi,
+            x_coordinate: localCoords.x,
+            y_coordinate: localCoords.y,
+          };
         }
         return poi;
       });
-  }, [pois, selectedLevelId, poiCoords, poiVisibility]);
+  }, [localPois, selectedLevelId, poiCoords, poiVisibility]);
 
   const handleDraftFinish = () => {
     if (drawMode === "circle") {
@@ -391,7 +482,19 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
       console.error(error);
       toast.error("Error al crear el área");
     }
-  }, [draftAreaPoints, drawMode, getCirclePoints, validateCircle, mapAreas, mapData.id, addArea, resetDraft, resetCircleDraft, poiInteractions, router]);
+  }, [
+    draftAreaPoints,
+    drawMode,
+    getCirclePoints,
+    validateCircle,
+    mapAreas,
+    mapData.id,
+    addArea,
+    resetDraft,
+    resetCircleDraft,
+    poiInteractions,
+    router,
+  ]);
 
   const handleEditFinishAuto = useCallback(async () => {
     if (editingAreaId === null || editingPoints.length < 3) {
@@ -420,9 +523,21 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
       console.error(error);
       toast.error("Error al actualizar el área");
     }
-  }, [editingAreaId, editingPoints, mapAreas, updateAreaState, cancelEditing, router]);
+  }, [
+    editingAreaId,
+    editingPoints,
+    mapAreas,
+    updateAreaState,
+    cancelEditing,
+    router,
+  ]);
 
-  const { toolbar, hints, areaUi, isMobile: overlayIsMobile } = useMapOverlaysProps({
+  const {
+    toolbar,
+    hints,
+    areaUi,
+    isMobile: overlayIsMobile,
+  } = useMapOverlaysProps({
     mapId: mapData.id!,
     isMobile,
     isEditMode: poiInteractions.isEditMode,
@@ -501,18 +616,21 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
     endEditingDrag,
   });
 
-  const handleCircleDragEnd = useCallback((event: Konva.KonvaEventObject<DragEvent>) => {
-    const node = event.target;
-    const dx = node.x();
-    const dy = node.y();
-    if (dx !== 0 || dy !== 0) {
-      moveCircleBy(dx, dy);
-      node.position({ x: 0, y: 0 });
-    }
-    isDraggingRef.current = false;
-    setCursor("crosshair");
-    endDraftDrag();
-  }, [moveCircleBy, setCursor, endDraftDrag, isDraggingRef]);
+  const handleCircleDragEnd = useCallback(
+    (event: Konva.KonvaEventObject<DragEvent>) => {
+      const node = event.target;
+      const dx = node.x();
+      const dy = node.y();
+      if (dx !== 0 || dy !== 0) {
+        moveCircleBy(dx, dy);
+        node.position({ x: 0, y: 0 });
+      }
+      isDraggingRef.current = false;
+      setCursor("crosshair");
+      endDraftDrag();
+    },
+    [moveCircleBy, setCursor, endDraftDrag, isDraggingRef],
+  );
 
   const { onDraftDragStart, onEditDragStart } = useMapInteractions({
     isDraggingRef,
@@ -521,10 +639,12 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
 
   return (
     <div className="flex w-full h-full">
-      <div className={cn(
-        "relative flex-shrink-0 h-full transition-all duration-200",
-        poiSidebarCollapsed ? "w-0" : "w-72"
-      )}>
+      <div
+        className={cn(
+          "relative flex-shrink-0 h-full transition-all duration-200",
+          poiSidebarCollapsed ? "w-0" : "w-72",
+        )}
+      >
         <PoiSidebar
           categories={categories}
           levels={allLevels}
@@ -553,9 +673,9 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
         ref={containerRef}
         className="flex-1 relative bg-slate-100 overflow-hidden touch-none"
         style={{
-          willChange: 'transform',
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden' as const,
+          willChange: "transform",
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden" as const,
         }}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -611,7 +731,10 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
                 const rect = containerRef.current.getBoundingClientRect();
                 setActiveAreaMenu({
                   areaId,
-                  position: { x: screenPos.x - rect.left, y: screenPos.y - rect.top }
+                  position: {
+                    x: screenPos.x - rect.left,
+                    y: screenPos.y - rect.top,
+                  },
                 });
               },
               onAreaClick: (areaId, event) => {
@@ -623,7 +746,11 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
                 if (!pointer) return;
                 const point = getPointerMapPosition();
                 if (!point) return;
-                poiInteractions.setNewPoiLocation({ x: point.x, y: point.y, areaId });
+                poiInteractions.setNewPoiLocation({
+                  x: point.x,
+                  y: point.y,
+                  areaId,
+                });
                 poiInteractions.setActiveTool("select");
               },
               onEditGroupDragStart: () => {
@@ -634,7 +761,8 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               onEditInsertPoint: (event) => {
                 if (!poiInteractions.isEditMode) return;
                 if (isDraggingRef.current) return;
-                if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
+                if (event.evt instanceof MouseEvent && event.evt.button !== 0)
+                  return;
                 if (editingPoints.length < 3) return;
                 event.cancelBubble = true;
                 const point = getPointerMapPosition();
@@ -659,9 +787,14 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               },
               onDraftGroupDragEnd: handleDraftDragEnd,
               onDraftInsertPoint: (event) => {
-                if (!poiInteractions.isEditMode || poiInteractions.activeTool !== "add_area") return;
+                if (
+                  !poiInteractions.isEditMode ||
+                  poiInteractions.activeTool !== "add_area"
+                )
+                  return;
                 if (isDraggingRef.current) return;
-                if (event.evt instanceof MouseEvent && event.evt.button !== 0) return;
+                if (event.evt instanceof MouseEvent && event.evt.button !== 0)
+                  return;
                 if (draftAreaPoints.length < 3) return;
                 event.cancelBubble = true;
                 const point = getPointerMapPosition();
@@ -707,7 +840,10 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               const rect = containerRef.current.getBoundingClientRect();
               setActivePoiMenu({
                 poi,
-                position: { x: screenPos.x - rect.left, y: screenPos.y - rect.top },
+                position: {
+                  x: screenPos.x - rect.left,
+                  y: screenPos.y - rect.top,
+                },
               });
             }}
             onPoiMouseEnter={poiInteractions.handlePoiMouseEnter}
@@ -723,24 +859,35 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
             onPoiContextMenu={(poi, screenPos) => {
               if (!containerRef.current) return;
               const rect = containerRef.current.getBoundingClientRect();
-              setActivePoiMenu({ poi, position: { x: screenPos.x - rect.left, y: screenPos.y - rect.top } });
+              setActivePoiMenu({
+                poi,
+                position: {
+                  x: screenPos.x - rect.left,
+                  y: screenPos.y - rect.top,
+                },
+              });
             }}
             onPoiMove={async (poiId, x, y) => {
               const poi = pois.find((p) => p.id === poiId);
               if (!poi) return;
               try {
-                const { updatePoiCoordinates } = await import("@/server/actions/pois");
+                const { updatePoiCoordinates } =
+                  await import("@/server/actions/pois");
                 await updatePoiCoordinates(poiId, x, y);
                 setPoiCoords((prev) => ({ ...prev, [poiId]: { x, y } }));
                 setRepositioning(false);
                 setRepositionPoiId(null);
-                poiInteractions.setActivePoiForEdit({ ...poi, x_coordinate: x, y_coordinate: y });
+                poiInteractions.setActivePoiForEdit({
+                  ...poi,
+                  x_coordinate: x,
+                  y_coordinate: y,
+                });
               } catch (error) {
                 console.error("Error updating POI coordinates:", error);
               }
             }}
-            onDragStart={() => { }}
-            onDragEnd={() => { }}
+            onDragStart={() => {}}
+            onDragEnd={() => {}}
           />
         </Stage>
 
@@ -753,7 +900,10 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
           newPoiLocation={poiInteractions.newPoiLocation}
           onCloseNewPoi={() => poiInteractions.setNewPoiLocation(null)}
           onCloseEditPoi={() => poiInteractions.setActivePoi(null)}
-          onCloseEditPoiFromContext={() => poiInteractions.setActivePoiForEdit(null)}
+          onCloseEditPoiFromContext={() =>
+            poiInteractions.setActivePoiForEdit(null)
+          }
+          onDeleted={handlePoiDeleted}
         />
 
         <PoiActionMenu
@@ -771,10 +921,15 @@ export default function MapViewer({ mapData, pois, categories, areas, layers = [
               setRepositioning(true);
             }
           }}
+          onDeleted={handlePoiDeleted}
         />
 
         <AreaActionMenu
-          area={activeAreaMenu ? mapAreas.find((a) => a.id === activeAreaMenu.areaId) ?? null : null}
+          area={
+            activeAreaMenu
+              ? (mapAreas.find((a) => a.id === activeAreaMenu.areaId) ?? null)
+              : null
+          }
           position={activeAreaMenu?.position ?? null}
           onClose={() => setActiveAreaMenu(null)}
           onEditPolygon={() => {
