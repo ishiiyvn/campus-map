@@ -11,7 +11,7 @@ interface UseStageZoomOptions {
 }
 
 export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseStageZoomOptions) {
-  const { handleWheel, setScale, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia } = useSmoothZoom(stageRef);
+  const { handleWheel, setScale, zoomAt, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia } = useSmoothZoom(stageRef);
 
   const onWheel = useCallback(
     (event: Konva.KonvaEventObject<WheelEvent>) => {
@@ -23,5 +23,5 @@ export function useStageZoom({ stageRef, viewportConfig, onScaleUpdate }: UseSta
     [handleWheel, onScaleUpdate]
   );
 
-  return { onWheel, setScale, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia };
+  return { onWheel, setScale, zoomAt, minZoom, maxZoom, startInertia, handleDragEnd, stopInertia };
 }

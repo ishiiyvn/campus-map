@@ -385,9 +385,11 @@ export default function MapViewer({
   const {
     onWheel,
     setScale,
+    zoomAt,
     minZoom,
     maxZoom,
     handleDragEnd: onStageDragEnd,
+    stopInertia,
   } = useStageZoom({
     stageRef,
     viewportConfig: mapData.viewport_config,
@@ -637,6 +639,77 @@ export default function MapViewer({
     updateCursor: setCursor,
   });
 
+  // Pinch-to-zoom and single-finger pan support
+  const isPinchingRef = useRef(false);
+  const initialPinchDistanceRef = useRef<number | null>(null);
+  const initialPinchScaleRef = useRef<number>(1);
+  const pinchCenterScreenRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPinchScaleRef = useRef<number | null>(null);
+
+  const getTouchDistance = (t0: any, t1: any) => Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+  const getTouchMidpoint = (t0: any, t1: any) => ({ x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 });
+
+  const handleTouchStart = useCallback((e: any) => {
+    if (e.touches.length >= 2) {
+      // start pinch
+      stopInertia();
+      isPinchingRef.current = true;
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const distance = getTouchDistance(t0, t1);
+      initialPinchDistanceRef.current = distance;
+      const stage = stageRef.current;
+      initialPinchScaleRef.current = stage ? stage.scaleX() : 1;
+      const mid = getTouchMidpoint(t0, t1);
+      pinchCenterScreenRef.current = mid;
+      lastPinchScaleRef.current = initialPinchScaleRef.current;
+    }
+    // allow single-finger gestures (pan) to be handled by Konva
+  }, [stopInertia, stageRef]);
+
+  const handleTouchMove = useCallback((e: any) => {
+    if (!isPinchingRef.current) return;
+    if (e.touches.length < 2) return;
+    e.preventDefault();
+    const t0 = e.touches[0];
+    const t1 = e.touches[1];
+    const distance = getTouchDistance(t0, t1);
+    const initial = initialPinchDistanceRef.current;
+    if (!initial) return;
+    const scaleFactor = distance / initial;
+    const targetScale = Math.min(Math.max(initialPinchScaleRef.current * scaleFactor, minZoom), maxZoom);
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    const centerScreen = getTouchMidpoint(t0, t1);
+    const pointer = { x: centerScreen.x - containerRect.left, y: centerScreen.y - containerRect.top };
+    if (zoomAt) zoomAt(pointer, targetScale, false);
+    lastPinchScaleRef.current = targetScale;
+  }, [minZoom, maxZoom, zoomAt]);
+
+  const handleTouchEnd = useCallback((e: any) => {
+    if (!isPinchingRef.current) return;
+    if (e.touches.length >= 2) return; // still pinching
+    e.preventDefault();
+    isPinchingRef.current = false;
+    const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (containerRect && pinchCenterScreenRef.current) {
+      const center = pinchCenterScreenRef.current;
+      const pointer = { x: center.x - containerRect.left, y: center.y - containerRect.top };
+      if (zoomAt) zoomAt(pointer, finalScale ?? 1, true);
+    } else if (finalScale != null) {
+      const stage = stageRef.current;
+      if (stage) {
+        const centerX = stage.width() / 2;
+        const centerY = stage.height() / 2;
+        if (zoomAt) zoomAt({ x: centerX, y: centerY }, finalScale, true);
+      }
+    }
+    initialPinchDistanceRef.current = null;
+    pinchCenterScreenRef.current = null;
+    lastPinchScaleRef.current = null;
+  }, [zoomAt, stageRef]);
+
   return (
     <div className="flex w-full h-full">
       <div
@@ -680,15 +753,10 @@ export default function MapViewer({
         onContextMenu={(event) => {
           event.preventDefault();
         }}
-        onTouchStart={(event) => {
-          event.preventDefault();
-        }}
-        onTouchMove={(event) => {
-          event.preventDefault();
-        }}
-        onTouchEnd={(event) => {
-          event.preventDefault();
-        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <Stage
           width={stageSize.width}

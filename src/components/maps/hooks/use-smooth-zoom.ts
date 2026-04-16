@@ -88,6 +88,51 @@ export function useSmoothZoom(
     [stageRef],
   );
 
+  // Helper that applies a target scale centered at a pointer position.
+  const applyScaleAt = useCallback((stage: Konva.Stage, targetScale: number, pointer: { x: number; y: number }, animate: boolean) => {
+    const clampedScale = Math.min(Math.max(targetScale, MIN_ZOOM), MAX_ZOOM);
+    const oldScale = stage.scaleX();
+
+    const mousePointTo = {
+      x: (pointer.x - stage.x()) / oldScale,
+      y: (pointer.y - stage.y()) / oldScale,
+    };
+
+    const newPos = {
+      x: pointer.x - mousePointTo.x * clampedScale,
+      y: pointer.y - mousePointTo.y * clampedScale,
+    };
+
+    if (!animate || Math.abs(clampedScale - oldScale) < 0.001) {
+      stage.position(newPos);
+      stage.scale({ x: clampedScale, y: clampedScale });
+      stage.batchDraw();
+      return clampedScale;
+    }
+
+    const anim = new Konva.Tween({
+      node: stage,
+      duration: ZOOM_DURATION,
+      x: newPos.x,
+      y: newPos.y,
+      scaleX: clampedScale,
+      scaleY: clampedScale,
+      easing: Konva.Easings.EaseOut,
+      onFinish: () => {
+        stage.batchDraw();
+      },
+    });
+    anim.play();
+    return clampedScale;
+  }, []);
+
+  const zoomAt = useCallback((pointer: { x: number; y: number }, targetScale: number, animate = true) => {
+    const stage = stageRef.current;
+    if (!stage) return null;
+    stopInertia();
+    return applyScaleAt(stage, targetScale, pointer, animate);
+  }, [stageRef, stopInertia, applyScaleAt]);
+
   const handleWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>): number | null => {
       e.evt.preventDefault();
@@ -108,25 +153,9 @@ export function useSmoothZoom(
       let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
       newScale = Math.min(Math.max(newScale, MIN_ZOOM), MAX_ZOOM);
 
-      const newPos = {
-        x: pointer.x - mousePointTo.x * newScale,
-        y: pointer.y - mousePointTo.y * newScale,
-      };
-
-      const anim = new Konva.Tween({
-        node: stage,
-        duration: ZOOM_DURATION,
-        x: newPos.x,
-        y: newPos.y,
-        scaleX: newScale,
-        scaleY: newScale,
-        easing: Konva.Easings.EaseOut,
-        onFinish: () => {
-          stage.batchDraw();
-        },
-      });
-      anim.play();
-
+      const pointerPos = pointer;
+      // Use shared helper to apply scale centered on pointer
+      applyScaleAt(stage, newScale, pointerPos, true);
       return newScale;
     },
     [stageRef, scaleBy, stopInertia],
@@ -211,6 +240,7 @@ export function useSmoothZoom(
   return {
     handleWheel,
     setScale,
+    zoomAt,
     startInertia,
     handleDragEnd,
     stopInertia,
