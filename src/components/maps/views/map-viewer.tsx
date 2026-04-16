@@ -684,9 +684,14 @@ export default function MapViewer({
     const centerScreen = getTouchMidpoint(t0, t1);
     // Convert screen/client coordinates to stage coordinates
     const pointerScreen = { x: centerScreen.x - containerRect.left, y: centerScreen.y - containerRect.top };
+    // Convert client coords to canvas pixels to account for devicePixelRatio / CSS scaling
+    const rect = stage.container().getBoundingClientRect();
+    const ratioX = stage.width() / rect.width;
+    const ratioY = stage.height() / rect.height;
+    const pointerCanvas = { x: pointerScreen.x * ratioX, y: pointerScreen.y * ratioY };
     const transform = stage.getAbsoluteTransform().copy();
     transform.invert();
-    const pointerStage = transform.point(pointerScreen as any);
+    const pointerStage = transform.point(pointerCanvas as any);
     if (zoomAt) zoomAt(pointerStage, targetScale, false);
     lastPinchScaleRef.current = targetScale;
   }, [minZoom, maxZoom, zoomAt]);
@@ -702,9 +707,13 @@ export default function MapViewer({
     if (containerRect && pinchCenterScreenRef.current && stage) {
       const center = pinchCenterScreenRef.current;
       const pointerScreen = { x: center.x - containerRect.left, y: center.y - containerRect.top };
-      const transform = stage.getAbsoluteTransform().copy();
-      transform.invert();
-      const pointerStage = transform.point(pointerScreen as any);
+      const rect2 = stage.container().getBoundingClientRect();
+      const ratioX2 = stage.width() / rect2.width;
+      const ratioY2 = stage.height() / rect2.height;
+      const pointerCanvas2 = { x: pointerScreen.x * ratioX2, y: pointerScreen.y * ratioY2 };
+      const transform2 = stage.getAbsoluteTransform().copy();
+      transform2.invert();
+      const pointerStage = transform2.point(pointerCanvas2 as any);
       if (zoomAt) zoomAt(pointerStage, finalScale ?? 1, true);
     } else if (finalScale != null && stage) {
       const centerX = stage.width() / 2;
