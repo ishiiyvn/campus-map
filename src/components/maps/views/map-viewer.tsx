@@ -654,11 +654,15 @@ export default function MapViewer({
       // start pinch
       stopInertia();
       isPinchingRef.current = true;
+      const stage = stageRef.current;
+      if (stage) {
+        stage.stopDrag();
+        stage.draggable(false);
+      }
       const t0 = e.touches[0];
       const t1 = e.touches[1];
       const distance = getTouchDistance(t0, t1);
       initialPinchDistanceRef.current = distance;
-      const stage = stageRef.current;
       initialPinchScaleRef.current = stage ? stage.scaleX() : 1;
       const mid = getTouchMidpoint(t0, t1);
       pinchCenterScreenRef.current = mid;
@@ -678,21 +682,16 @@ export default function MapViewer({
     if (!initial) return;
     const scaleFactor = distance / initial;
     const targetScale = Math.min(Math.max(initialPinchScaleRef.current * scaleFactor, minZoom), maxZoom);
-    const containerRect = containerRef.current?.getBoundingClientRect();
     const stage = stageRef.current;
-    if (!containerRect || !stage) return;
+    if (!stage) return;
     const centerScreen = getTouchMidpoint(t0, t1);
-    // Convert screen/client coordinates to stage coordinates
-    const pointerScreen = { x: centerScreen.x - containerRect.left, y: centerScreen.y - containerRect.top };
-    // Convert client coords to canvas pixels to account for devicePixelRatio / CSS scaling
     const rect = stage.container().getBoundingClientRect();
-    const ratioX = stage.width() / rect.width;
-    const ratioY = stage.height() / rect.height;
-    const pointerCanvas = { x: pointerScreen.x * ratioX, y: pointerScreen.y * ratioY };
-    const transform = stage.getAbsoluteTransform().copy();
-    transform.invert();
-    const pointerStage = transform.point(pointerCanvas as any);
-    if (zoomAt) zoomAt(pointerStage, targetScale, false);
+    // zoomAt expects pointer in stage container coordinate space
+    const pointer = {
+      x: centerScreen.x - rect.left,
+      y: centerScreen.y - rect.top,
+    };
+    if (zoomAt) zoomAt(pointer, targetScale, false);
     lastPinchScaleRef.current = targetScale;
   }, [minZoom, maxZoom, zoomAt]);
 
@@ -701,20 +700,22 @@ export default function MapViewer({
     if (e.touches.length >= 2) return; // still pinching
     e.preventDefault();
     isPinchingRef.current = false;
-    const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
-    const containerRect = containerRef.current?.getBoundingClientRect();
     const stage = stageRef.current;
-    if (containerRect && pinchCenterScreenRef.current && stage) {
+    if (stage) {
+      stage.draggable(
+        poiInteractions.activeTool === "select" ||
+          poiInteractions.activeTool === "add_area",
+      );
+    }
+    const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
+    if (pinchCenterScreenRef.current && stage) {
       const center = pinchCenterScreenRef.current;
-      const pointerScreen = { x: center.x - containerRect.left, y: center.y - containerRect.top };
-      const rect2 = stage.container().getBoundingClientRect();
-      const ratioX2 = stage.width() / rect2.width;
-      const ratioY2 = stage.height() / rect2.height;
-      const pointerCanvas2 = { x: pointerScreen.x * ratioX2, y: pointerScreen.y * ratioY2 };
-      const transform2 = stage.getAbsoluteTransform().copy();
-      transform2.invert();
-      const pointerStage = transform2.point(pointerCanvas2 as any);
-      if (zoomAt) zoomAt(pointerStage, finalScale ?? 1, true);
+      const rect = stage.container().getBoundingClientRect();
+      const pointer = {
+        x: center.x - rect.left,
+        y: center.y - rect.top,
+      };
+      if (zoomAt) zoomAt(pointer, finalScale ?? 1, true);
     } else if (finalScale != null && stage) {
       const centerX = stage.width() / 2;
       const centerY = stage.height() / 2;
@@ -723,7 +724,7 @@ export default function MapViewer({
     initialPinchDistanceRef.current = null;
     pinchCenterScreenRef.current = null;
     lastPinchScaleRef.current = null;
-  }, [zoomAt, stageRef]);
+  }, [zoomAt, stageRef, poiInteractions.activeTool]);
 
   return (
     <div className="flex w-full h-full">
