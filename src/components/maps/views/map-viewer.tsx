@@ -679,10 +679,15 @@ export default function MapViewer({
     const scaleFactor = distance / initial;
     const targetScale = Math.min(Math.max(initialPinchScaleRef.current * scaleFactor, minZoom), maxZoom);
     const containerRect = containerRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
+    const stage = stageRef.current;
+    if (!containerRect || !stage) return;
     const centerScreen = getTouchMidpoint(t0, t1);
-    const pointer = { x: centerScreen.x - containerRect.left, y: centerScreen.y - containerRect.top };
-    if (zoomAt) zoomAt(pointer, targetScale, false);
+    // Convert screen/client coordinates to stage coordinates
+    const pointerScreen = { x: centerScreen.x - containerRect.left, y: centerScreen.y - containerRect.top };
+    const transform = stage.getAbsoluteTransform().copy();
+    transform.invert();
+    const pointerStage = transform.point(pointerScreen as any);
+    if (zoomAt) zoomAt(pointerStage, targetScale, false);
     lastPinchScaleRef.current = targetScale;
   }, [minZoom, maxZoom, zoomAt]);
 
@@ -693,17 +698,18 @@ export default function MapViewer({
     isPinchingRef.current = false;
     const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
     const containerRect = containerRef.current?.getBoundingClientRect();
-    if (containerRect && pinchCenterScreenRef.current) {
+    const stage = stageRef.current;
+    if (containerRect && pinchCenterScreenRef.current && stage) {
       const center = pinchCenterScreenRef.current;
-      const pointer = { x: center.x - containerRect.left, y: center.y - containerRect.top };
-      if (zoomAt) zoomAt(pointer, finalScale ?? 1, true);
-    } else if (finalScale != null) {
-      const stage = stageRef.current;
-      if (stage) {
-        const centerX = stage.width() / 2;
-        const centerY = stage.height() / 2;
-        if (zoomAt) zoomAt({ x: centerX, y: centerY }, finalScale, true);
-      }
+      const pointerScreen = { x: center.x - containerRect.left, y: center.y - containerRect.top };
+      const transform = stage.getAbsoluteTransform().copy();
+      transform.invert();
+      const pointerStage = transform.point(pointerScreen as any);
+      if (zoomAt) zoomAt(pointerStage, finalScale ?? 1, true);
+    } else if (finalScale != null && stage) {
+      const centerX = stage.width() / 2;
+      const centerY = stage.height() / 2;
+      if (zoomAt) zoomAt({ x: centerX, y: centerY }, finalScale, true);
     }
     initialPinchDistanceRef.current = null;
     pinchCenterScreenRef.current = null;
