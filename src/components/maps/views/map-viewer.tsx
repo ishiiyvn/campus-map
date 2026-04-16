@@ -643,7 +643,7 @@ export default function MapViewer({
   const isPinchingRef = useRef(false);
   const initialPinchDistanceRef = useRef<number | null>(null);
   const initialPinchScaleRef = useRef<number>(1);
-  const pinchCenterScreenRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
   const lastPinchScaleRef = useRef<number | null>(null);
 
   const getTouchDistance = (t0: any, t1: any) => Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
@@ -665,7 +665,15 @@ export default function MapViewer({
       initialPinchDistanceRef.current = distance;
       initialPinchScaleRef.current = stage ? stage.scaleX() : 1;
       const mid = getTouchMidpoint(t0, t1);
-      pinchCenterScreenRef.current = mid;
+      if (stage) {
+        const rect = stage.container().getBoundingClientRect();
+        lastPinchCenterRef.current = {
+          x: mid.x - rect.left,
+          y: mid.y - rect.top,
+        };
+      } else {
+        lastPinchCenterRef.current = null;
+      }
       lastPinchScaleRef.current = initialPinchScaleRef.current;
     }
     // allow single-finger gestures (pan) to be handled by Konva
@@ -686,14 +694,35 @@ export default function MapViewer({
     if (!stage) return;
     const centerScreen = getTouchMidpoint(t0, t1);
     const rect = stage.container().getBoundingClientRect();
-    // zoomAt expects pointer in stage container coordinate space
-    const pointer = {
+    const center = {
       x: centerScreen.x - rect.left,
       y: centerScreen.y - rect.top,
     };
-    if (zoomAt) zoomAt(pointer, targetScale, false);
+    const oldScale = stage.scaleX();
+    const clampedScale = Math.min(Math.max(targetScale, minZoom), maxZoom);
+    const pointTo = {
+      x: (center.x - stage.x()) / oldScale,
+      y: (center.y - stage.y()) / oldScale,
+    };
+    const lastCenter = lastPinchCenterRef.current;
+    const delta = lastCenter
+      ? {
+          x: center.x - lastCenter.x,
+          y: center.y - lastCenter.y,
+        }
+      : { x: 0, y: 0 };
+
+    stage.scale({ x: clampedScale, y: clampedScale });
+    stage.position({
+      x: center.x - pointTo.x * clampedScale + delta.x,
+      y: center.y - pointTo.y * clampedScale + delta.y,
+    });
+    stage.batchDraw();
+
+    updateScale(clampedScale);
+    lastPinchCenterRef.current = center;
     lastPinchScaleRef.current = targetScale;
-  }, [minZoom, maxZoom, zoomAt]);
+  }, [maxZoom, minZoom, stageRef, updateScale]);
 
   const handleTouchEnd = useCallback((e: any) => {
     if (!isPinchingRef.current) return;
@@ -708,21 +737,15 @@ export default function MapViewer({
       );
     }
     const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
-    if (pinchCenterScreenRef.current && stage) {
-      const center = pinchCenterScreenRef.current;
-      const rect = stage.container().getBoundingClientRect();
-      const pointer = {
-        x: center.x - rect.left,
-        y: center.y - rect.top,
-      };
-      if (zoomAt) zoomAt(pointer, finalScale ?? 1, true);
+    if (lastPinchCenterRef.current && stage) {
+      if (zoomAt) zoomAt(lastPinchCenterRef.current, finalScale ?? 1, true);
     } else if (finalScale != null && stage) {
       const centerX = stage.width() / 2;
       const centerY = stage.height() / 2;
       if (zoomAt) zoomAt({ x: centerX, y: centerY }, finalScale, true);
     }
     initialPinchDistanceRef.current = null;
-    pinchCenterScreenRef.current = null;
+    lastPinchCenterRef.current = null;
     lastPinchScaleRef.current = null;
   }, [zoomAt, stageRef, poiInteractions.activeTool]);
 
