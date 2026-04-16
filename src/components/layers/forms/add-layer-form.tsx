@@ -34,6 +34,8 @@ export default function AddLayerForm({ mapId, onSubmitCallback, onCancel }: AddL
       name: "",
       display_order: 0,
       is_visible: true,
+      fill_color: null,
+      stroke_color: null,
     }
   });
 

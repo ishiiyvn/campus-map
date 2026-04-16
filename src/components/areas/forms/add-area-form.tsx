@@ -42,6 +42,8 @@ export default function AddAreaForm({
       code: "",
       description: "",
       map_id: mapId,
+      fill_color: null,
+      stroke_color: null,
       polygon_coordinates: polygonCoordinates,
     },
   });

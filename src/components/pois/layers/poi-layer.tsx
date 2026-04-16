@@ -9,6 +9,8 @@ interface PoiLayerProps {
   pois: PointOfInterest[];
   categories: Category[];
   isEditMode: boolean;
+  readOnly?: boolean;
+  onPoiSelect?: (poi: PointOfInterest) => void;
   onPoiContextMenu: (
     poi: PointOfInterest,
     screenPos: { x: number; y: number },
@@ -62,6 +64,8 @@ export const PoiLayer = memo(function PoiLayer({
   pois,
   categories,
   isEditMode,
+  readOnly = false,
+  onPoiSelect,
   onPoiContextMenu,
   onPoiMouseEnter,
   onPoiMouseLeave,
@@ -116,7 +120,13 @@ export const PoiLayer = memo(function PoiLayer({
             onMouseEnter={onPoiMouseEnter}
             onMouseLeave={onPoiMouseLeave}
             onClick={(event) => {
-              if (!isEditMode) return;
+              if (!isEditMode) {
+                if (readOnly) {
+                  event.cancelBubble = true;
+                  onPoiSelect?.(poi);
+                }
+                return;
+              }
               event.cancelBubble = true;
               onPoiContextMenu(poi, {
                 x: (event as Konva.KonvaEventObject<MouseEvent>).evt.clientX,

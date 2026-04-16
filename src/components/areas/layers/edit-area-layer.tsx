@@ -49,7 +49,7 @@ export function EditAreaLayer({
       <Line
         points={points.flatMap((point) => [point.x, point.y])}
         closed={points.length >= 3}
-        fill="rgba(59,130,246,0.2)"
+        fill="rgba(59,130,246,0.5)"
         stroke="#3b82f6"
         strokeWidth={2}
         dash={dashArray}

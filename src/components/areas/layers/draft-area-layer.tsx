@@ -56,7 +56,7 @@ export function DraftAreaLayer({
         name="draft-line"
         points={flatPoints}
         closed={points.length >= 3}
-        fill="rgba(59,130,246,0.2)"
+        fill="rgba(59,130,246,0.5)"
         stroke="#3b82f6"
         strokeWidth={2}
         dash={dashArray}

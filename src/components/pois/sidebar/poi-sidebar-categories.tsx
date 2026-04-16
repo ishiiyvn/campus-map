@@ -14,7 +14,9 @@ export function PoiSidebarCategories({
   visibility,
   onVisibilityChange,
 }: PoiSidebarCategoriesProps) {
-  const activeCategories = categories.filter((c) => c.is_active);
+  const activeCategories = categories.filter(
+    (c) => c.is_active && c.display_type !== "text",
+  );
 
   if (activeCategories.length === 0) {
     return (

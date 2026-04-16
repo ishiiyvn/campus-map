@@ -12,15 +12,19 @@ import type { Layer as LayerType } from "@/server/db/schema";
 
 interface AreaRenderData {
   id: number;
+  name: string;
   layer_id: number | null;
   points: number[];
   fill: string;
   stroke: string;
+  labelX: number;
+  labelY: number;
 }
 
 interface AreasLayersGroupProps {
   layers: LayerType[];
   layerVisibility: Record<number, boolean>;
+  focusedAreaId?: number | null;
   data: {
     areaLines: AreaRenderData[];
     editingAreaId: number | null;
@@ -41,6 +45,7 @@ interface AreasLayersGroupProps {
   handlers: {
     onAreaContextMenu: (areaId: number, screenPos: { x: number; y: number }) => void;
     onAreaClick?: (areaId: number, event: Konva.KonvaEventObject<MouseEvent>) => void;
+    onAreaSelect?: (areaId: number) => void;
     onEditGroupDragStart: () => void;
     onEditGroupDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => void;
     onEditInsertPoint: (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
@@ -64,12 +69,13 @@ interface AreasLayersGroupProps {
   };
 }
 
-export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVisibility, data, flags, handlers }: AreasLayersGroupProps) {
+export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVisibility, focusedAreaId, data, flags, handlers }: AreasLayersGroupProps) {
   const { areaLines, editingAreaId, editingPoints, draftPoints, draftPointsFlat, pointRadius, dashArray, circleCenter, circleRadius, circlePointsFlat, drawMode } = data;
   const { isEditMode, activeTool } = flags;
   const {
     onAreaContextMenu,
     onAreaClick,
+    onAreaSelect,
     onEditGroupDragStart,
     onEditGroupDragEnd,
     onEditInsertPoint,
@@ -129,10 +135,12 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
             <AreaLayer
               areas={layerAreas}
               hiddenAreaId={editingAreaId}
+              focusedAreaId={focusedAreaId}
               isEditMode={isEditMode}
               activeTool={activeTool}
               onAreaContextMenu={onAreaContextMenu}
               onAreaClick={onAreaClick}
+              onAreaSelect={onAreaSelect}
             />
           </Layer>
         );
@@ -143,10 +151,12 @@ export const AreasLayersGroup = memo(function AreasLayersGroup({ layers, layerVi
           <AreaLayer
             areas={areasByLayer["unassigned"]}
             hiddenAreaId={editingAreaId}
+            focusedAreaId={focusedAreaId}
             isEditMode={isEditMode}
             activeTool={activeTool}
             onAreaContextMenu={onAreaContextMenu}
             onAreaClick={onAreaClick}
+            onAreaSelect={onAreaSelect}
           />
         </Layer>
       )}

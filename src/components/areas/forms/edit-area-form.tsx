@@ -47,6 +47,8 @@ export default function EditAreaForm({
       description: area.description || "",
       map_id: area.map_id,
       layer_id: area.layer_id ?? undefined,
+      fill_color: area.fill_color ?? null,
+      stroke_color: area.stroke_color ?? null,
       polygon_coordinates: polygonCoordinates ?? ((area.polygon_coordinates as PolygonCoordinate[]) || []),
     },
   });
@@ -58,6 +60,8 @@ export default function EditAreaForm({
       description: area.description || "",
       map_id: area.map_id,
       layer_id: area.layer_id ?? undefined,
+      fill_color: area.fill_color ?? null,
+      stroke_color: area.stroke_color ?? null,
       polygon_coordinates: polygonCoordinates ?? (area.polygon_coordinates as PolygonCoordinate[]),
     });
   }, [area, form, polygonCoordinates]);

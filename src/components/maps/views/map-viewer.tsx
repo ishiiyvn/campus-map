@@ -25,6 +25,7 @@ import { PoiDialogs } from "@/components/pois/overlays/poi-dialogs";
 import { PoiIconLayer } from "@/components/pois/layers/poi-icon-layer";
 import { AreasLayersGroup } from "@/components/areas/layers/areas-layers-group";
 import { MapOverlays } from "@/components/maps/overlays/map-overlays";
+import { MapViewDetails } from "@/components/maps/overlays/map-view-details";
 import { PoiSidebar } from "@/components/pois/sidebar/poi-sidebar";
 
 // konva components
@@ -56,7 +57,8 @@ import { LayerSidebar } from "@/components/layers/layer-sidebar";
 import { PoiActionMenu } from "@/components/pois/overlays/poi-action-menu";
 import { AreaActionMenu } from "@/components/areas/overlays/area-action-menu";
 import { Button } from "@/components/ui/button";
-import { PanelRightIcon } from "lucide-react";
+import { LevelSelector } from "@/components/pois/level-selector";
+import { EllipsisVertical, Info, PanelRightIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MapViewerProps {
@@ -78,8 +80,8 @@ export default function MapViewer({
   readOnly = true,
   levels = [],
 }: MapViewerProps) {
-  // readOnly is currently unused but kept for interface compatibility
-  void readOnly;
+  const [forceEditEnabled, setForceEditEnabled] = useState(false);
+  const isViewOnly = readOnly && !forceEditEnabled;
 
   const router = useRouter();
 
@@ -100,6 +102,7 @@ export default function MapViewer({
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const focusMenuRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(containerRef);
   const {
     stageScale,
@@ -211,6 +214,11 @@ export default function MapViewer({
     areaId: number;
     position: { x: number; y: number };
   } | null>(null);
+  const [selectedPoi, setSelectedPoi] = useState<PointOfInterest | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
+  const [focusedAreaId, setFocusedAreaId] = useState<number | null>(null);
+  const [focusedAreaLevelId, setFocusedAreaLevelId] = useState<number | null>(null);
+  const [focusMenuOpen, setFocusMenuOpen] = useState(false);
   const [repositionPoiId, setRepositionPoiId] = useState<number | null>(null);
   const [repositioning, setRepositioning] = useState(false);
   const [poiCoords, setPoiCoords] = useState<
@@ -228,6 +236,7 @@ export default function MapViewer({
     setLocalPois((prev) => prev.filter((p) => p.id !== deletedId));
     // Close any open menus related to the deleted POI
     setActivePoiMenu(null);
+    setSelectedPoi((prev) => (prev?.id === deletedId ? null : prev));
   }, []);
 
   // If levels prop ever changes, sync local state
@@ -274,7 +283,131 @@ export default function MapViewer({
     removeArea,
   } = useMapAreasState(areas);
 
+  const selectedArea = useMemo(() => {
+    if (selectedAreaId === null) return null;
+    return mapAreas.find((area) => area.id === selectedAreaId) ?? null;
+  }, [mapAreas, selectedAreaId]);
+
+  useEffect(() => {
+    if (selectedAreaId === null) return;
+    const exists = mapAreas.some((area) => area.id === selectedAreaId);
+    if (!exists) {
+      setSelectedAreaId(null);
+    }
+  }, [mapAreas, selectedAreaId]);
+
+  useEffect(() => {
+    if (focusedAreaId === null) {
+      setFocusMenuOpen(false);
+      return;
+    }
+    const exists = mapAreas.some((area) => area.id === focusedAreaId);
+    if (!exists) {
+      setFocusedAreaId(null);
+      setFocusedAreaLevelId(null);
+      setFocusMenuOpen(false);
+    }
+  }, [focusedAreaId, mapAreas]);
+
+  useEffect(() => {
+    if (focusedAreaId === null) {
+      setFocusedAreaLevelId(null);
+      return;
+    }
+    const areaLevelIds = new Set(
+      allLevels
+        .filter((level) => level.area_id === focusedAreaId)
+        .map((level) => level.id),
+    );
+    if (
+      focusedAreaLevelId !== null &&
+      !areaLevelIds.has(focusedAreaLevelId)
+    ) {
+      setFocusedAreaLevelId(null);
+    }
+  }, [allLevels, focusedAreaId, focusedAreaLevelId]);
+
+  const closeViewDetails = useCallback(() => {
+    setSelectedPoi(null);
+    setSelectedAreaId(null);
+  }, []);
+
+  const clearFocusedArea = useCallback(() => {
+    setFocusedAreaId(null);
+    setFocusedAreaLevelId(null);
+    setFocusMenuOpen(false);
+  }, []);
+
+  const focusArea = useCallback(
+    (areaId: number) => {
+      setFocusedAreaId(areaId);
+      setFocusedAreaLevelId(null);
+      setFocusMenuOpen(false);
+      closeViewDetails();
+      setActivePoiMenu(null);
+      setActiveAreaMenu(null);
+    },
+    [closeViewDetails],
+  );
+
+  const openPoiDetails = useCallback((poi: PointOfInterest) => {
+    setSelectedPoi(poi);
+    setSelectedAreaId(null);
+    setActivePoiMenu(null);
+    setActiveAreaMenu(null);
+  }, []);
+
+  const openAreaDetails = useCallback((areaId: number) => {
+    setSelectedAreaId(areaId);
+    setSelectedPoi(null);
+    setActivePoiMenu(null);
+    setActiveAreaMenu(null);
+  }, []);
+
+  const detailsOpen = selectedPoi !== null || selectedArea !== null;
+
   const [mapLayers, setMapLayers] = useState<DbLayer[]>(layers);
+  const [storageLoaded, setStorageLoaded] = useState(false);
+
+  const imageOpacityStorageKey = useMemo(
+    () => `map-image-opacity:${mapData.id ?? "unknown"}`,
+    [mapData.id],
+  );
+  const imageVisibleStorageKey = useMemo(
+    () => `map-image-visible:${mapData.id ?? "unknown"}`,
+    [mapData.id],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const persistedOpacity = window.localStorage.getItem(imageOpacityStorageKey);
+    if (persistedOpacity !== null) {
+      const parsed = Number.parseFloat(persistedOpacity);
+      if (Number.isFinite(parsed)) {
+        const clamped = Math.max(0, Math.min(1, parsed));
+        setImageOpacity(clamped);
+      }
+    }
+
+    const persistedVisible = window.localStorage.getItem(imageVisibleStorageKey);
+    if (persistedVisible !== null) {
+      setImageVisible(persistedVisible === "true");
+    }
+
+    setStorageLoaded(true);
+  }, [imageOpacityStorageKey, imageVisibleStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!storageLoaded) return;
+    window.localStorage.setItem(imageOpacityStorageKey, String(imageOpacity));
+  }, [imageOpacity, imageOpacityStorageKey, storageLoaded]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!storageLoaded) return;
+    window.localStorage.setItem(imageVisibleStorageKey, String(imageVisible));
+  }, [imageVisible, imageVisibleStorageKey, storageLoaded]);
 
   useEffect(() => {
     setMapLayers(layers);
@@ -337,11 +470,14 @@ export default function MapViewer({
   const poiInteractions = usePoiInteractions(stageRef, {
     onAreaPointAdd: addDraftPointHandler,
   });
+  const mapIsEditMode = !isViewOnly && poiInteractions.isEditMode;
+  const mapActiveTool = isViewOnly ? "select" : poiInteractions.activeTool;
 
   const isDraftActive = draftAreaPoints.length > 0 || hasCircle;
 
   const requestToolChange = useCallback(
     (tool: "select" | "add_poi" | "add_area") => {
+      if (isViewOnly) return;
       if (tool === poiInteractions.activeTool) return;
       if (isDraftActive && tool !== "add_area") {
         setPendingAction({ type: "tool", tool });
@@ -350,25 +486,27 @@ export default function MapViewer({
       }
       poiInteractions.setActiveTool(tool);
     },
-    [isDraftActive, poiInteractions],
+    [isDraftActive, isViewOnly, poiInteractions],
   );
 
-  // Ensure edit mode is disabled on mobile
+  // Ensure edit mode is disabled on mobile/view-only
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile || isViewOnly) {
       poiInteractions.setIsEditMode(false);
     }
-  }, [isMobile, poiInteractions]);
+  }, [isMobile, isViewOnly, poiInteractions]);
 
   const wasEditModeRef = useRef(poiInteractions.isEditMode);
 
   useEffect(() => {
+    if (isViewOnly) return;
     if (!isDraftActive || poiInteractions.activeTool === "add_area") return;
     setPendingAction({ type: "tool", tool: "add_area" });
     setIsDraftGuardOpen(true);
-  }, [isDraftActive, poiInteractions.activeTool]);
+  }, [isDraftActive, isViewOnly, poiInteractions.activeTool]);
 
   useEffect(() => {
+    if (isViewOnly) return;
     const wasEditMode = wasEditModeRef.current;
     if (
       wasEditMode &&
@@ -380,7 +518,7 @@ export default function MapViewer({
       setIsDraftGuardOpen(true);
     }
     wasEditModeRef.current = poiInteractions.isEditMode;
-  }, [isDraftActive, isDraftGuardOpen, poiInteractions.isEditMode]);
+  }, [isDraftActive, isDraftGuardOpen, isViewOnly, poiInteractions.isEditMode]);
 
   const {
     onWheel,
@@ -396,33 +534,105 @@ export default function MapViewer({
     onScaleUpdate: updateScale,
   });
 
-  const areaLines = useMemo(() => buildAreaRenderData(mapAreas), [mapAreas]);
+  const areaLines = useMemo(
+    () => buildAreaRenderData(mapAreas, mapLayers),
+    [mapAreas, mapLayers],
+  );
+
+  const focusedArea = useMemo(() => {
+    if (focusedAreaId === null) return null;
+    return mapAreas.find((area) => area.id === focusedAreaId) ?? null;
+  }, [focusedAreaId, mapAreas]);
+
+  const focusAreaLevels = useMemo(
+    () =>
+      allLevels
+        .filter((level) => level.area_id === focusedAreaId)
+        .sort((a, b) => a.display_order - b.display_order),
+    [allLevels, focusedAreaId],
+  );
+
+  useEffect(() => {
+    if (!focusMenuOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        focusMenuRef.current &&
+        !focusMenuRef.current.contains(event.target as Node)
+      ) {
+        setFocusMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [focusMenuOpen]);
 
   type PoiWithLevels = PointOfInterest & { level_ids?: number[] };
-  const filteredPois = useMemo(() => {
-    const basePois =
-      selectedLevelId === null
-        ? localPois
-        : (localPois as PoiWithLevels[]).filter((poi) => {
-            const poiLevels = poi.level_ids || [];
-            return (
-              poiLevels.length === 0 || poiLevels.includes(selectedLevelId)
-            );
-          });
-    return basePois
-      .filter((poi) => poiVisibility[poi.category_id] ?? true)
+  const { filteredIconPois, filteredTextPois } = useMemo(() => {
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+
+    const matchesGlobalLevel = (poi: PoiWithLevels) => {
+      if (focusedAreaId !== null) return true;
+      if (selectedLevelId === null) return true;
+      const poiLevels = poi.level_ids || [];
+      return poiLevels.length === 0 || poiLevels.includes(selectedLevelId);
+    };
+
+    const matchesFocusedArea = (poi: PoiWithLevels) => {
+      if (focusedAreaId === null) return true;
+      return poi.area_id === focusedAreaId;
+    };
+
+    const matchesFocusedLevel = (poi: PoiWithLevels) => {
+      if (focusedAreaId === null || focusedAreaLevelId === null) return true;
+      const poiLevels = poi.level_ids || [];
+      return poiLevels.includes(focusedAreaLevelId);
+    };
+
+    const withCoords = (localPois as PoiWithLevels[])
+      .filter(matchesGlobalLevel)
+      .filter(matchesFocusedArea)
+      .filter(matchesFocusedLevel)
       .map((poi) => {
         const localCoords = poiCoords[poi.id];
-        if (localCoords) {
-          return {
-            ...poi,
-            x_coordinate: localCoords.x,
-            y_coordinate: localCoords.y,
-          };
-        }
-        return poi;
+        if (!localCoords) return poi;
+        return {
+          ...poi,
+          x_coordinate: localCoords.x,
+          y_coordinate: localCoords.y,
+        };
       });
-  }, [localPois, selectedLevelId, poiCoords, poiVisibility]);
+
+    const iconPois: PointOfInterest[] = [];
+    const textPois: PointOfInterest[] = [];
+
+    withCoords.forEach((poi) => {
+      const category = categoryById.get(poi.category_id);
+      const isTextCategory = category?.display_type === "text";
+      if (isTextCategory) {
+        if (focusedAreaId !== null) {
+          textPois.push(poi);
+        }
+        return;
+      }
+      if (poiVisibility[poi.category_id] ?? true) {
+        iconPois.push(poi);
+      }
+    });
+
+    return { filteredIconPois: iconPois, filteredTextPois: textPois };
+  }, [
+    categories,
+    focusedAreaId,
+    focusedAreaLevelId,
+    localPois,
+    poiCoords,
+    poiVisibility,
+    selectedLevelId,
+  ]);
 
   const handleDraftFinish = () => {
     if (drawMode === "circle") {
@@ -542,9 +752,14 @@ export default function MapViewer({
   } = useMapOverlaysProps({
     mapId: mapData.id!,
     isMobile,
-    isEditMode: poiInteractions.isEditMode,
-    activeTool: poiInteractions.activeTool,
-    onEditModeChange: poiInteractions.setIsEditMode,
+    isEditMode: mapIsEditMode,
+    activeTool: mapActiveTool,
+    onEditModeChange: (enabled) => {
+      if (readOnly) {
+        setForceEditEnabled(enabled);
+      }
+      poiInteractions.setIsEditMode(enabled);
+    },
     onToolChange: requestToolChange,
     sidebarCollapsed: poiSidebarCollapsed,
     mapAreas,
@@ -590,13 +805,28 @@ export default function MapViewer({
     onAreaDeleted: removeArea,
     onResetDraft: resetDraft,
     onResetEdit: cancelEditing,
-    onResetTool: () => poiInteractions.setActiveTool("select"),
+    onResetTool: () => {
+      if (isViewOnly) return;
+      poiInteractions.setActiveTool("select");
+    },
     onCloseDialogs: () => {
       setIsEditAreaDialogOpen(false);
       setIsDeleteDialogOpen(false);
       setDeleteTargetAreaId(null);
     },
   });
+
+  const stagePoiInteractions = useMemo(
+    () => ({
+      isEditMode: mapIsEditMode,
+      activeTool: mapActiveTool,
+      handleStageClick: (event: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        if (isViewOnly) return;
+        poiInteractions.handleStageClick(event);
+      },
+    }),
+    [isViewOnly, mapActiveTool, mapIsEditMode, poiInteractions],
+  );
 
   const { setCursor, stageProps } = useStageInteractions({
     stageRef,
@@ -605,8 +835,16 @@ export default function MapViewer({
     editingPoints,
     insertEditingPointAtNearestEdge,
     getPointerMapPosition,
-    poiInteractions,
+    poiInteractions: stagePoiInteractions,
     onDragEnd: onStageDragEnd,
+    onStageBackgroundClick: () => {
+      if (isViewOnly) {
+        closeViewDetails();
+      }
+      setFocusMenuOpen(false);
+      setActivePoiMenu(null);
+      setActiveAreaMenu(null);
+    },
   });
 
   const { handleDraftDragEnd, handleEditDragEnd } = useAreaDragHandlers({
@@ -732,8 +970,7 @@ export default function MapViewer({
     const stage = stageRef.current;
     if (stage) {
       stage.draggable(
-        poiInteractions.activeTool === "select" ||
-          poiInteractions.activeTool === "add_area",
+        mapActiveTool === "select" || mapActiveTool === "add_area",
       );
     }
     const finalScale = lastPinchScaleRef.current ?? initialPinchScaleRef.current;
@@ -747,7 +984,7 @@ export default function MapViewer({
     initialPinchDistanceRef.current = null;
     lastPinchCenterRef.current = null;
     lastPinchScaleRef.current = null;
-  }, [zoomAt, stageRef, poiInteractions.activeTool]);
+  }, [mapActiveTool, zoomAt, stageRef]);
 
   return (
     <div className="flex w-full h-full">
@@ -797,6 +1034,65 @@ export default function MapViewer({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >
+        {focusedArea && (
+          <div className="absolute top-4 left-4 z-40 pointer-events-auto">
+            <div className="flex items-center gap-2 rounded-lg border bg-white/95 px-3 py-2 shadow-md">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Focused area</p>
+                <p className="max-w-[220px] truncate text-sm font-semibold">
+                  {focusedArea.name}
+                </p>
+              </div>
+
+              <LevelSelector
+                levels={focusAreaLevels}
+                selectedLevelId={focusedAreaLevelId}
+                onSelectLevel={setFocusedAreaLevelId}
+              />
+
+              <div className="relative" ref={focusMenuRef}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setFocusMenuOpen((prev) => !prev)}
+                  aria-label="Focused area actions"
+                >
+                  <EllipsisVertical className="h-4 w-4" />
+                </Button>
+
+                {focusMenuOpen && (
+                  <div className="absolute right-0 top-10 z-50 min-w-[160px] rounded-md border bg-white p-1 shadow-lg">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent"
+                      onClick={() => {
+                        openAreaDetails(focusedArea.id);
+                        setFocusMenuOpen(false);
+                      }}
+                    >
+                      <Info className="h-4 w-4" />
+                      View details
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent"
+                      onClick={() => {
+                        clearFocusedArea();
+                        closeViewDetails();
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                      Exit focus
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <Stage
           width={stageSize.width}
           height={stageSize.height}
@@ -815,6 +1111,7 @@ export default function MapViewer({
           <AreasLayersGroup
             layers={mapLayers}
             layerVisibility={layerVisibility}
+            focusedAreaId={focusedAreaId}
             data={{
               areaLines,
               editingAreaId,
@@ -829,11 +1126,15 @@ export default function MapViewer({
               drawMode,
             }}
             flags={{
-              isEditMode: poiInteractions.isEditMode,
-              activeTool: poiInteractions.activeTool,
+              isEditMode: mapIsEditMode,
+              activeTool: mapActiveTool,
             }}
             handlers={{
               onAreaContextMenu: (areaId, screenPos) => {
+                if (!mapIsEditMode && isViewOnly) {
+                  focusArea(areaId);
+                  return;
+                }
                 if (!containerRef.current) return;
                 const rect = containerRef.current.getBoundingClientRect();
                 setActiveAreaMenu({
@@ -845,7 +1146,7 @@ export default function MapViewer({
                 });
               },
               onAreaClick: (areaId, event) => {
-                if (poiInteractions.activeTool !== "add_poi") return;
+                if (mapActiveTool !== "add_poi" || !mapIsEditMode) return;
                 event.cancelBubble = true;
                 const stage = event.target.getStage();
                 if (!stage) return;
@@ -860,13 +1161,17 @@ export default function MapViewer({
                 });
                 poiInteractions.setActiveTool("select");
               },
+              onAreaSelect: (areaId) => {
+                if (!isViewOnly) return;
+                focusArea(areaId);
+              },
               onEditGroupDragStart: () => {
                 onEditDragStart();
                 beginEditingDrag();
               },
               onEditGroupDragEnd: handleEditDragEnd,
               onEditInsertPoint: (event) => {
-                if (!poiInteractions.isEditMode) return;
+                if (!mapIsEditMode) return;
                 if (isDraggingRef.current) return;
                 if (event.evt instanceof MouseEvent && event.evt.button !== 0)
                   return;
@@ -895,8 +1200,8 @@ export default function MapViewer({
               onDraftGroupDragEnd: handleDraftDragEnd,
               onDraftInsertPoint: (event) => {
                 if (
-                  !poiInteractions.isEditMode ||
-                  poiInteractions.activeTool !== "add_area"
+                  !mapIsEditMode ||
+                  mapActiveTool !== "add_area"
                 )
                   return;
                 if (isDraggingRef.current) return;
@@ -939,10 +1244,16 @@ export default function MapViewer({
           />
 
           <PoiLayer
-            pois={filteredPois}
+            pois={filteredTextPois}
             categories={categories}
-            isEditMode={poiInteractions.isEditMode}
+            isEditMode={mapIsEditMode}
+            readOnly={isViewOnly}
+            onPoiSelect={openPoiDetails}
             onPoiContextMenu={(poi, screenPos) => {
+              if (!mapIsEditMode && isViewOnly) {
+                openPoiDetails(poi);
+                return;
+              }
               if (!containerRef.current) return;
               const rect = containerRef.current.getBoundingClientRect();
               setActivePoiMenu({
@@ -958,12 +1269,18 @@ export default function MapViewer({
           />
 
           <PoiIconLayer
-            pois={filteredPois}
+            pois={filteredIconPois}
             categories={categories}
-            isEditMode={poiInteractions.isEditMode}
-            repositioning={repositioning}
+            isEditMode={mapIsEditMode}
+            readOnly={isViewOnly}
+            onPoiSelect={openPoiDetails}
+            repositioning={!isViewOnly && repositioning}
             repositionPoiId={repositionPoiId}
             onPoiContextMenu={(poi, screenPos) => {
+              if (!mapIsEditMode && isViewOnly) {
+                openPoiDetails(poi);
+                return;
+              }
               if (!containerRef.current) return;
               const rect = containerRef.current.getBoundingClientRect();
               setActivePoiMenu({
@@ -975,6 +1292,7 @@ export default function MapViewer({
               });
             }}
             onPoiMove={async (poiId, x, y) => {
+              if (isViewOnly) return;
               const poi = pois.find((p) => p.id === poiId);
               if (!poi) return;
               try {
@@ -998,104 +1316,126 @@ export default function MapViewer({
           />
         </Stage>
 
-        <PoiDialogs
-          mapId={mapData.id!}
+        {!isViewOnly && (
+          <>
+            <PoiDialogs
+              mapId={mapData.id!}
+              categories={categories}
+              areas={mapAreas}
+              activePoi={poiInteractions.activePoi}
+              activePoiForEdit={poiInteractions.activePoiForEdit}
+              newPoiLocation={poiInteractions.newPoiLocation}
+              onCloseNewPoi={() => poiInteractions.setNewPoiLocation(null)}
+              onCloseEditPoi={() => poiInteractions.setActivePoi(null)}
+              onCloseEditPoiFromContext={() =>
+                poiInteractions.setActivePoiForEdit(null)
+              }
+              onDeleted={handlePoiDeleted}
+            />
+
+            <PoiActionMenu
+              poi={activePoiMenu?.poi ?? null}
+              position={activePoiMenu?.position ?? null}
+              onClose={() => setActivePoiMenu(null)}
+              onEdit={() => {
+                if (activePoiMenu?.poi) {
+                  poiInteractions.setActivePoiForEdit(activePoiMenu.poi);
+                }
+              }}
+              onReposition={() => {
+                if (activePoiMenu?.poi) {
+                  setRepositionPoiId(activePoiMenu.poi.id);
+                  setRepositioning(true);
+                }
+              }}
+              onDeleted={handlePoiDeleted}
+            />
+
+              <AreaActionMenu
+                area={
+                  activeAreaMenu
+                    ? (mapAreas.find((a) => a.id === activeAreaMenu.areaId) ?? null)
+                    : null
+                }
+                position={activeAreaMenu?.position ?? null}
+                onClose={() => setActiveAreaMenu(null)}
+                onFocusArea={() => {
+                  if (activeAreaMenu) {
+                    focusArea(activeAreaMenu.areaId);
+                  }
+                }}
+                onEditPolygon={() => {
+                  if (activeAreaMenu) {
+                    const area = mapAreas.find((a) => a.id === activeAreaMenu.areaId);
+                    if (area) {
+                    startEditingArea(area);
+                  }
+                }
+              }}
+              onEditInfo={() => {
+                if (activeAreaMenu) {
+                  const area = mapAreas.find((a) => a.id === activeAreaMenu.areaId);
+                  if (area) {
+                    openEditInfo(area);
+                  }
+                }
+              }}
+              onDelete={() => {
+                if (activeAreaMenu) {
+                  setDeleteTargetAreaId(activeAreaMenu.areaId);
+                  setIsDeleteDialogOpen(true);
+                }
+              }}
+            />
+
+            <LayerSidebar
+              mapId={mapData.id!}
+              layers={mapLayers}
+              areas={mapAreas}
+              isOpen={isLayerSidebarOpen}
+              onClose={() => setIsLayerSidebarOpen(false)}
+              onToggleLayerVisibility={toggleLayerVisibility}
+              onMoveAreaToLayer={handleMoveAreaToLayer}
+              onReorderAreasInLayer={handleReorderAreasInLayer}
+              onReorderLayers={handleReorderLayers}
+            />
+
+            <DraftToolSwitchDialog
+              open={isDraftGuardOpen}
+              onOpenChange={setIsDraftGuardOpen}
+              onKeepEditing={() => {
+                setPendingAction(null);
+                setIsDraftGuardOpen(false);
+                if (!poiInteractions.isEditMode) {
+                  poiInteractions.setIsEditMode(true);
+                }
+                if (poiInteractions.activeTool !== "add_area") {
+                  poiInteractions.setActiveTool("add_area");
+                }
+              }}
+              onDiscard={() => {
+                resetDraft();
+                if (pendingAction?.type === "tool") {
+                  poiInteractions.setActiveTool(pendingAction.tool);
+                }
+                setPendingAction(null);
+                setIsDraftGuardOpen(false);
+              }}
+            />
+          </>
+        )}
+
+        <MapViewDetails
+          open={detailsOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeViewDetails();
+            }
+          }}
+          isMobile={isMobile}
+          poi={selectedPoi}
+          area={selectedArea}
           categories={categories}
-          areas={mapAreas}
-          activePoi={poiInteractions.activePoi}
-          activePoiForEdit={poiInteractions.activePoiForEdit}
-          newPoiLocation={poiInteractions.newPoiLocation}
-          onCloseNewPoi={() => poiInteractions.setNewPoiLocation(null)}
-          onCloseEditPoi={() => poiInteractions.setActivePoi(null)}
-          onCloseEditPoiFromContext={() =>
-            poiInteractions.setActivePoiForEdit(null)
-          }
-          onDeleted={handlePoiDeleted}
-        />
-
-        <PoiActionMenu
-          poi={activePoiMenu?.poi ?? null}
-          position={activePoiMenu?.position ?? null}
-          onClose={() => setActivePoiMenu(null)}
-          onEdit={() => {
-            if (activePoiMenu?.poi) {
-              poiInteractions.setActivePoiForEdit(activePoiMenu.poi);
-            }
-          }}
-          onReposition={() => {
-            if (activePoiMenu?.poi) {
-              setRepositionPoiId(activePoiMenu.poi.id);
-              setRepositioning(true);
-            }
-          }}
-          onDeleted={handlePoiDeleted}
-        />
-
-        <AreaActionMenu
-          area={
-            activeAreaMenu
-              ? (mapAreas.find((a) => a.id === activeAreaMenu.areaId) ?? null)
-              : null
-          }
-          position={activeAreaMenu?.position ?? null}
-          onClose={() => setActiveAreaMenu(null)}
-          onEditPolygon={() => {
-            if (activeAreaMenu) {
-              const area = mapAreas.find((a) => a.id === activeAreaMenu.areaId);
-              if (area) {
-                startEditingArea(area);
-              }
-            }
-          }}
-          onEditInfo={() => {
-            if (activeAreaMenu) {
-              const area = mapAreas.find((a) => a.id === activeAreaMenu.areaId);
-              if (area) {
-                openEditInfo(area);
-              }
-            }
-          }}
-          onDelete={() => {
-            if (activeAreaMenu) {
-              setDeleteTargetAreaId(activeAreaMenu.areaId);
-              setIsDeleteDialogOpen(true);
-            }
-          }}
-        />
-
-        <LayerSidebar
-          mapId={mapData.id!}
-          layers={mapLayers}
-          areas={mapAreas}
-          isOpen={isLayerSidebarOpen}
-          onClose={() => setIsLayerSidebarOpen(false)}
-          onToggleLayerVisibility={toggleLayerVisibility}
-          onMoveAreaToLayer={handleMoveAreaToLayer}
-          onReorderAreasInLayer={handleReorderAreasInLayer}
-          onReorderLayers={handleReorderLayers}
-        />
-
-        <DraftToolSwitchDialog
-          open={isDraftGuardOpen}
-          onOpenChange={setIsDraftGuardOpen}
-          onKeepEditing={() => {
-            setPendingAction(null);
-            setIsDraftGuardOpen(false);
-            if (!poiInteractions.isEditMode) {
-              poiInteractions.setIsEditMode(true);
-            }
-            if (poiInteractions.activeTool !== "add_area") {
-              poiInteractions.setActiveTool("add_area");
-            }
-          }}
-          onDiscard={() => {
-            resetDraft();
-            if (pendingAction?.type === "tool") {
-              poiInteractions.setActiveTool(pendingAction.tool);
-            }
-            setPendingAction(null);
-            setIsDraftGuardOpen(false);
-          }}
         />
       </div>
 
@@ -1103,6 +1443,8 @@ export default function MapViewer({
 
       <MapOverlays
         isMobile={overlayIsMobile}
+        showToolbar
+        showAreaUi={!isViewOnly}
         toolbar={toolbar}
         hints={hints}
         areaUi={areaUi}

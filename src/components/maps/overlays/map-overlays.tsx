@@ -8,6 +8,8 @@ import type { Layer } from "@/server/db/schema";
 
 interface MapOverlaysProps {
   isMobile: boolean;
+  showToolbar?: boolean;
+  showAreaUi?: boolean;
   toolbar: {
     isEditMode: boolean;
     activeTool: EditorTool;
@@ -33,6 +35,8 @@ interface MapOverlaysProps {
 
 export function MapOverlays({
   isMobile,
+  showToolbar = true,
+  showAreaUi = true,
   toolbar,
   hints,
   areaUi,
@@ -47,28 +51,29 @@ export function MapOverlays({
 }: MapOverlaysProps) {
   return (
     <>
-      {/* Top-right: editor toolbar */}
-      <div className="fixed top-18 right-4 pointer-events-auto z-50">
-        <MapEditorToolbar
-          isEditMode={toolbar.isEditMode}
-          onEditModeChange={toolbar.onEditModeChange}
-          activeTool={toolbar.activeTool}
-          onToolChange={toolbar.onToolChange}
-          visible={!isMobile}
-          layers={layers}
-          layerVisibility={layerVisibility}
-          imageVisible={imageVisible}
-          imageOpacity={imageOpacity}
-          onToggleLayerVisibility={onToggleLayerVisibility}
-          onToggleImageVisibility={onToggleImageVisibility}
-          onImageOpacityChange={onImageOpacityChange}
-          onOpenLayerSidebar={onOpenLayerSidebar}
-        />
-      </div>
+      {showToolbar && (
+        <div className="fixed top-18 right-4 pointer-events-auto z-50">
+          <MapEditorToolbar
+            isEditMode={toolbar.isEditMode}
+            onEditModeChange={toolbar.onEditModeChange}
+            activeTool={toolbar.activeTool}
+            onToolChange={toolbar.onToolChange}
+            visible={!isMobile}
+            layers={layers}
+            layerVisibility={layerVisibility}
+            imageVisible={imageVisible}
+            imageOpacity={imageOpacity}
+            onToggleLayerVisibility={onToggleLayerVisibility}
+            onToggleImageVisibility={onToggleImageVisibility}
+            onImageOpacityChange={onImageOpacityChange}
+            onOpenLayerSidebar={onOpenLayerSidebar}
+          />
+        </div>
+      )}
 
       {/* Full-canvas overlays */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-        <AreaUi {...areaUi} />
+        {showAreaUi && <AreaUi {...areaUi} />}
         <MapOverlayHints
           isEditMode={hints.isEditMode}
           activeTool={hints.activeTool}

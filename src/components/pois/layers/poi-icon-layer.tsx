@@ -10,6 +10,8 @@ interface PoiIconLayerProps {
   pois: PointOfInterest[];
   categories: Category[];
   isEditMode: boolean;
+  readOnly?: boolean;
+  onPoiSelect?: (poi: PointOfInterest) => void;
   repositioning: boolean;
   repositionPoiId: number | null;
   onPoiContextMenu: (poi: PointOfInterest, screenPos: { x: number; y: number }) => void;
@@ -49,6 +51,8 @@ function PoiIconGroup({
   poi,
   category,
   isEditMode,
+  readOnly,
+  onPoiSelect,
   isRepositioningThis,
   onPoiContextMenu,
   onPoiMove,
@@ -58,6 +62,8 @@ function PoiIconGroup({
   poi: PointOfInterest;
   category: Category | null | undefined;
   isEditMode: boolean;
+  readOnly?: boolean;
+  onPoiSelect?: (poi: PointOfInterest) => void;
   isRepositioningThis: boolean;
   onPoiContextMenu: (poi: PointOfInterest, screenPos: { x: number; y: number }) => void;
   onPoiMove: (poiId: number, x: number, y: number) => void;
@@ -79,7 +85,14 @@ function PoiIconGroup({
   };
 
   const handleClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isEditMode || isRepositioningThis) return;
+    if (!isEditMode) {
+      if (readOnly) {
+        e.cancelBubble = true;
+        onPoiSelect?.(poi);
+      }
+      return;
+    }
+    if (isRepositioningThis) return;
     e.cancelBubble = true;
     onPoiContextMenu(poi, { x: e.evt.clientX, y: e.evt.clientY });
   };
@@ -142,6 +155,8 @@ export const PoiIconLayer = memo(function PoiIconLayer({
   pois,
   categories,
   isEditMode,
+  readOnly = false,
+  onPoiSelect,
   repositioning,
   repositionPoiId,
   onPoiContextMenu,
@@ -174,6 +189,8 @@ export const PoiIconLayer = memo(function PoiIconLayer({
             poi={poi}
             category={category}
             isEditMode={isEditMode}
+            readOnly={readOnly}
+            onPoiSelect={onPoiSelect}
             isRepositioningThis={isRepositioningThis}
             onPoiContextMenu={onPoiContextMenu}
             onPoiMove={onPoiMove}

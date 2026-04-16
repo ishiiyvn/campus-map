@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Pentagon, Pencil, Trash2 } from "lucide-react";
+import { Pentagon, Pencil, ScanSearch, Trash2 } from "lucide-react";
 import { Area } from "@/server/db/schema";
 import { deleteArea } from "@/server/actions/areas";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ interface AreaActionMenuProps {
   area: Area | null;
   position: { x: number; y: number } | null;
   onClose: () => void;
+  onFocusArea: () => void;
   onEditPolygon: () => void;
   onEditInfo: () => void;
   onDelete: () => void;
@@ -21,6 +22,7 @@ export function AreaActionMenu({
   area,
   position,
   onClose,
+  onFocusArea,
   onEditPolygon,
   onEditInfo,
   onDelete,
@@ -72,6 +74,16 @@ export function AreaActionMenu({
           top: position.y,
         }}
       >
+        <button
+          onClick={() => {
+            onFocusArea();
+            onClose();
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
+        >
+          <ScanSearch className="h-4 w-4" />
+          Focus area
+        </button>
         <button
           onClick={() => {
             onEditPolygon();

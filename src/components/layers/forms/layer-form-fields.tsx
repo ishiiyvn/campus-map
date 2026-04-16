@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 
 export interface LayerFormFieldsProps {
   form: any;
@@ -72,6 +73,100 @@ export function LayerFormFields({ form, isEdit = false }: LayerFormFieldsProps) 
           </FormItem>
         )}
       />
+
+      <div className="space-y-4 rounded-lg border p-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Colores de la capa</p>
+          {(!form.watch("fill_color") || !form.watch("stroke_color")) && (
+            <p className="text-xs text-muted-foreground">
+              Si no defines un color, las áreas usarán el color por defecto.
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="fill_color"
+            render={({ field }) => {
+              const value = typeof field.value === "string" ? field.value : "";
+              return (
+                <FormItem>
+                  <FormLabel>Relleno</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={value || "#3b82f6"}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      className="h-10 w-14 cursor-pointer p-1"
+                    />
+                    <FormControl>
+                      <Input
+                        value={value}
+                        placeholder="#3b82f6"
+                        autoComplete="off"
+                        onChange={(event) => {
+                          const next = event.target.value.trim();
+                          field.onChange(next || null);
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="stroke_color"
+            render={({ field }) => {
+              const value = typeof field.value === "string" ? field.value : "";
+              return (
+                <FormItem>
+                  <FormLabel>Borde</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={value || "#3b82f6"}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      className="h-10 w-14 cursor-pointer p-1"
+                    />
+                    <FormControl>
+                      <Input
+                        value={value}
+                        placeholder="#3b82f6"
+                        autoComplete="off"
+                        onChange={(event) => {
+                          const next = event.target.value.trim();
+                          field.onChange(next || null);
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
+
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              form.setValue("fill_color", null, { shouldDirty: true });
+              form.setValue("stroke_color", null, { shouldDirty: true });
+              form.clearErrors(["fill_color", "stroke_color"]);
+            }}
+          >
+            Reset to default colors
+          </Button>
+        </div>
+      </div>
     </>
   );
 }

@@ -8,6 +8,7 @@ import { isAreaCodeAvailable } from "@/server/actions/areas";
 import slugify from "slugify";
 import { useRef, useState } from "react";
 import { Layer } from "@/server/db/schema";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -149,6 +150,101 @@ export default function AreaFormFields({ form, initialCode, layers = [] }: AreaF
           </FormItem>
         )}
       />
+
+      {/* Color Fields */}
+      <div className="space-y-4 rounded-lg border p-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Colores del area</p>
+          {(!form.watch("fill_color") || !form.watch("stroke_color")) && (
+            <p className="text-xs text-muted-foreground">
+              Colores por defecto activos para cualquier color sin definir.
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="fill_color"
+            render={({ field }) => {
+              const value = typeof field.value === "string" ? field.value : "";
+              return (
+                <FormItem>
+                  <FormLabel>Relleno</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={value || "#3b82f6"}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      className="h-10 w-14 cursor-pointer p-1"
+                    />
+                    <FormControl>
+                      <Input
+                        value={value}
+                        placeholder="#3b82f6"
+                        autoComplete="off"
+                        onChange={(event) => {
+                          const next = event.target.value.trim();
+                          field.onChange(next || null);
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="stroke_color"
+            render={({ field }) => {
+              const value = typeof field.value === "string" ? field.value : "";
+              return (
+                <FormItem>
+                  <FormLabel>Borde</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={value || "#3b82f6"}
+                      onChange={(event) => field.onChange(event.target.value)}
+                      className="h-10 w-14 cursor-pointer p-1"
+                    />
+                    <FormControl>
+                      <Input
+                        value={value}
+                        placeholder="#3b82f6"
+                        autoComplete="off"
+                        onChange={(event) => {
+                          const next = event.target.value.trim();
+                          field.onChange(next || null);
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        </div>
+
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              form.setValue("fill_color", null, { shouldDirty: true });
+              form.setValue("stroke_color", null, { shouldDirty: true });
+              form.clearErrors(["fill_color", "stroke_color"]);
+            }}
+          >
+            Reset to default colors
+          </Button>
+        </div>
+      </div>
 
       {/* Layer Selection */}
       {layers.length > 0 && (

@@ -18,6 +18,7 @@ interface UseStageInteractionsOptions {
   getPointerMapPosition: () => { x: number; y: number } | null;
   poiInteractions: PoiInteractionsAdapter;
   onDragEnd?: (velocityX: number, velocityY: number) => void;
+  onStageBackgroundClick?: () => void;
 }
 
 export function useStageInteractions({
@@ -29,6 +30,7 @@ export function useStageInteractions({
   getPointerMapPosition,
   poiInteractions,
   onDragEnd,
+  onStageBackgroundClick,
 }: UseStageInteractionsOptions) {
   const lastPosRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
 
@@ -58,6 +60,10 @@ export function useStageInteractions({
         return;
       }
 
+      if (event.target === event.target.getStage()) {
+        onStageBackgroundClick?.();
+      }
+
       poiInteractions.handleStageClick(event);
     },
     [
@@ -66,6 +72,7 @@ export function useStageInteractions({
       getPointerMapPosition,
       insertEditingPointAtNearestEdge,
       isDraggingRef,
+      onStageBackgroundClick,
       poiInteractions,
     ]
   );

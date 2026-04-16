@@ -1,5 +1,6 @@
 import z from "zod";
 
+const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color inválido. Usa formato #RRGGBB");
 
 export const layerSchema = z.object({
   id: z.number().optional(),
@@ -8,6 +9,8 @@ export const layerSchema = z.object({
   slug: z.string().nullable().optional(),
   display_order: z.number().int().default(0).optional(),
   is_visible: z.boolean().default(true).optional(),
+  fill_color: hexColor.nullable().optional(),
+  stroke_color: hexColor.nullable().optional(),
   created_at: z.date().optional(),
 })
 

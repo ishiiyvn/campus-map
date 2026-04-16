@@ -36,6 +36,8 @@ export function EditLayerForm({ layer, onSubmitCallback, onCancel }: EditLayerFo
       name: layer.name,
       display_order: layer.display_order,
       is_visible: layer.is_visible,
+      fill_color: layer.fill_color,
+      stroke_color: layer.stroke_color,
     }
   });
 
